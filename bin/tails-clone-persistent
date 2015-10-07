@@ -1,0 +1,327 @@
+#!/usr/bin/perl -T
+my $program = 'tails-clone-persistent';
+my $version = '0.1';
+
+#######################################################################
+#
+# TODO:
+#
+# * Offer to run tails-installer if no tails partition found
+#
+#######################################################################
+
+
+use strict;
+use warnings;
+
+use Expect;
+
+# Secure our path
+$ENV{'PATH'} = '/bin:/usr/bin:/sbin:/usr/sbin';
+
+use Term::ReadKey; 				# libterm-readkey-perl
+
+# cpan libs (we'll have to package these ourselves)
+# the rpm/alien version of Term::Choose is installed in a stupid place
+use lib "/usr/lib/perl5/vendor_perl/5.22.0";
+use Term::Choose qw(choose); 	# cpan 
+
+#use Linux::ACL;					# not packaged?
+
+# moved to setuid helper
+#my $tails_free_start = 2621;
+
+my $DEBUG;
+#$DEBUG=1;
+
+my $expect_timeout = 300; # Five minutes should be PLENTY
+my $persist_location = '/live/persistence/TailsData_unlocked/';
+my $skel_location = '/var/lib/frith/skel';
+my $helper_utility = '/var/lib/frith/tcp-helper';
+
+###############
+# Houskeeping #
+###############
+
+END {
+	# clean up our own mess	
+	ReadMode(0);
+	system('/bin/stty', 'sane');
+} 
+
+my $menu = new Term::Choose();
+
+
+#############################
+# Process command line args #
+#############################
+
+my %CMD_OPTIONS;
+
+sub parse_options {
+  while($ARGV[0] and $ARGV[0]=~/^--/) {
+	my $option = shift(@ARGV);
+	my $value = 1;
+	$option =~ s/^--//;
+	if($option =~ /=/) {
+		($option, $value) = split('=', $option);
+	}
+	$CMD_OPTIONS{$option} = $value;
+  }
+} 
+
+sub option_help {
+	print qq[This is ${program} v${version}
+	 
+Clone the running Tails persistent partition to another. The target 
+disk should already have Tails installed (use the Tails installer).
+
+It takes the following options:
+
+--help  This help
+--debug Debugging information
+--skel  Copy the contents of ${skel_location} instead
+--pull  Clone another persistent partition to this one (needs root)
+
+];
+}
+
+
+################################
+
+
+sub secure_input() {
+	my $prompt = shift;
+	ReadMode('noecho');
+	print $prompt;
+	my $input=ReadLine(0);
+	$input =~ s/[\n\r\f\t]//g;
+	print "\n";
+	ReadMode('restore');
+	return $input;
+}
+
+
+sub ask_passphrase() {
+	print(q[A passphrase will be used to encrypt your persistent data.
+
+The passphrase should contain at least 16 characters, and at least one 
+non-alphanumeric character, such as punctuation.
+
+]);
+	my $passphrase;
+	my $confirm;
+	do {
+		$passphrase = &secure_input('Crypted disk passphrase: ');
+		while(
+			length($passphrase) < 16 or
+			! $passphrase =~ /[^[:alnum:]]/
+		) {
+			$passphrase = &secure_input(q[Passphrase is not strong enough.
+			
+Crypted disk passphrase: ]);
+		}
+		$confirm = &secure_input('Confirm: ');
+		print "\nConfirmation does not match\n" unless $passphrase eq $confirm;
+		
+	} until($passphrase eq $confirm);
+	
+	return $passphrase;
+}
+
+
+sub make_submenu() {
+	my $heading = shift;
+	my $response = $menu->choose(
+		[@_, undef],
+		{
+			prompt => "${heading}\n\n",
+			undef  => 'Cancel',
+			layout => 3,
+		}
+	);
+	return $response;
+}
+
+sub make_confirm() {
+	my $heading = shift;
+	my $response = $menu->choose(
+		[undef, 'Yes, I am really really sure'],
+		{
+			prompt => "Are you really really sure you want to ${heading}?\n\n",
+			undef  => 'On second thoughts, no',
+			layout => 3,
+		}
+	);
+	return $response;
+}
+
+
+#################################
+
+
+sub get_tails_partition {
+	my $tails_partition;
+	my $pipe;
+	
+	open($pipe, '/bin/mount|') or die "failed to check mounts\n";
+	while(<$pipe>) {
+		print $_ if $CMD_OPTIONS{'debug'};
+		if(m!^([/[:alnum:]._-]+) on /lib/live/mount/medium type vfat!) {
+			$tails_partition = $1;
+			last;
+		}
+	}
+	close $pipe;
+	return $tails_partition;
+}
+
+sub choose_block_device {
+	my $prompt = shift;
+	my $except = shift;
+	my @block_devices;
+	my $pipe;
+
+	open($pipe, '/sbin/blkid |');
+	while(<$pipe>) {
+		print $_ if $CMD_OPTIONS{'debug'};
+		if(m!^([/[:alnum:]._-]+): LABEL="Tails" UUID="[a-fA-F0-9-]+" TYPE="vfat"!) {
+			my $device = $1;
+			if($device ne $except) {
+				chop $device;
+				push(@block_devices, $device);
+			}
+		}
+	}
+	close $pipe;
+
+	# TODO: give user better info in menu, e.g. make and model
+	return &make_submenu($prompt, @block_devices);
+}
+
+sub mount_device {
+	my $block_device = shift;
+	my $mount_point;
+	my $pipe;
+	
+	print qq[Mounting crypted partition...\n] if $CMD_OPTIONS{'debug'};
+	open($pipe, "/usr/bin/udisks --mount ${block_device}|")
+		or die "could not mount disk $block_device\n";
+	while(<$pipe>) {
+		print $_ if $CMD_OPTIONS{'debug'};
+		if(m!^Mounted \S+ at ([/[:alnum:]._-]+)!) {
+			$mount_point = $1;
+			last;
+		}
+	}
+	close $pipe;
+	return $mount_point;
+}
+
+
+##################################
+
+
+sub clone_to_tails() {	
+	my $source_location = shift;
+	my $tails_partition = &get_tails_partition();
+	
+	die "could not determine running Tails partition" unless $tails_partition;
+	print "Tails volume found on $tails_partition\n" if $CMD_OPTIONS{'debug'};
+
+	my $block_device = &choose_block_device('SELECT TAILS DISK TO COPY TO', $tails_partition);
+	return unless $block_device;
+	
+	# farm out real work to setuid helper
+	if(-b "${block_device}2") {
+		return unless &make_confirm("overwrite the existing persistent partition on ${block_device}");
+
+		my $retval = system($helper_utility, $source_location, $block_device, '--existing');
+		die "Could not run ${helper_utility}\n" if $retval != 0;
+	} else {
+		my $passphrase = &ask_passphrase;
+		
+		my $exp = Expect->spawn($helper_utility, $source_location, $block_device, "--new");
+		die "Could not run ${helper_utility}\n" unless $exp;
+		if($DEBUG) {
+			$exp->exp_internal(1);
+		} else {
+			$exp->log_stdout(0);
+		};
+		
+		$exp->expect($expect_timeout,[
+			"Cannot exec", sub{
+				die "Could not run ${helper_utility}\n";
+			}], [
+			"Type uppercase yes", sub{
+				my $self=shift;
+				$self->send("YES\n");
+				exp_continue;
+			}], [
+			"(Enter|Verify) passphrase", sub{
+				my $self=shift;
+				# allow subprocess to flush input buffer on slow H/W
+				sleep(1);
+				$self->send("${passphrase}\n");
+				exp_continue;
+			}]
+		);
+	} 
+}
+
+
+sub clone_from_tails {	
+	my $tails_partition = &get_tails_partition();
+	die "could not determine running Tails partition" unless $tails_partition;
+	print "Tails volume found on $tails_partition\n" if $CMD_OPTIONS{'debug'};
+
+	my $block_device = &choose_block_device('SELECT TAILS DISK TO COPY FROM', $tails_partition);
+	return unless $block_device;
+
+	return unless &make_confirm("overwrite your running Tails persistent volume using ${block_device}");
+
+	# don't use setuid helper for pull
+	# a) safer to require sudo to overwrite the running configuration
+	# b) we only need 'pull' in rare edge cases, if ever
+	
+	my $partition = "${block_device}2";
+	system('/sbin/cryptsetup', 'luksOpen', $partition, 'TailsData_source');
+	#will prompt for a password
+	
+	my $mount_point = &mount_device('/dev/mapper/TailsData_source');
+	die "could not mount disk\n" unless $mount_point;
+	print "Crypted volume mounted on $mount_point\n" if $CMD_OPTIONS{'debug'};
+
+	print qq[Copying files...];
+	system('/usr/bin/rsync', '-a', '--delete', "--exclude=gnupg/random_seed", 
+		"${mount_point}/", $persist_location);
+	print qq[done\n];
+
+	system('/usr/bin/udisks', '--unmount', '/dev/mapper/TailsData_source');
+	do {
+		print qq[Attempting to stop device (waiting for buffers to flush)\n];
+	} until system('/sbin/cryptsetup', 'luksClose', 'TailsData_source')==0;
+	print qq[Copy complete\n];
+}
+
+
+#####################################
+
+
+sub main {
+	&parse_options;
+	if($CMD_OPTIONS{'help'}) {
+		&option_help;
+	} elsif($CMD_OPTIONS{'pull'}) {
+		if($> != 0) {
+			die "only root can overwrite running config; try again using sudo";
+		}
+		&clone_from_tails;
+	} elsif($CMD_OPTIONS{'skel'}) {
+		&clone_to_tails($skel_location);
+	} else {
+		&clone_to_tails($persist_location);
+	}
+}
+
+&main;
