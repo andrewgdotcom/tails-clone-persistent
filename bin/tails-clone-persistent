@@ -4,9 +4,11 @@ my $version = '0.1';
 
 #######################################################################
 #
-# TODO:
+# tails-clone-persistent
 #
-# * Offer to run tails-installer if no tails partition found
+# We call /var/lib/frith/tcp-helper to do the dirty work. It is setuid
+# root (in order to create filesystems and set permissions) but has
+# no user interaction or intelligence. That's all safely in here.
 #
 #######################################################################
 
@@ -194,9 +196,23 @@ sub choose_block_device {
 		}
 	}
 	close $pipe;
-
-	# TODO: give user better info in menu, e.g. make and model
-	return &make_submenu($prompt, @block_devices);
+	
+	if(@block_devices) {
+		# TODO: give user better info in menu, e.g. make and model?
+		return &make_submenu($prompt, @block_devices);
+	} elsif($menu->choose(
+		[undef, 'Yes'],
+		{
+			prompt => "No other tails drives found. Do you want to create one?\n\n",
+			undef => 'Not now',
+			layout => 3,
+		}
+	  )) {
+		print qq[Insert a new drive (minimum 4GB, recommended 8gb) and press enter...];
+		ReadLine(0);
+		system('liveusb-creator', '-u', '-n', '--clone', '-P', '-m', '-x');
+		return &choose_block_device($prompt, $except);
+	}
 }
 
 sub mount_device {
