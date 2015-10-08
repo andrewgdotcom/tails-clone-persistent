@@ -1,5 +1,5 @@
 DPKG_DEST=~/build/
-PREFIX=$DPKG_DEST/frith/staging
+PREFIX=$DPKG_DEST/frith
 
 BINPREFIX=$PREFIX/usr/bin
 LIBPREFIX=$PREFIX/var/lib/frith
