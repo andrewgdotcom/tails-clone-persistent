@@ -5,12 +5,21 @@ BINPREFIX=$PREFIX/usr/bin
 LIBPREFIX=$PREFIX/var/lib/frith
 SKEL=$LIBPREFIX/skel
 
+$BINPREFIX:
+	mkdir -p $BINPREFIX
+
+$LIBPREFIX:
+	mkdir -p $LIBPREFIX
+
+$SKEL:
+	mkdir -p $SKEL
+
 src/tcp-helper: src/tcp-helper.c
 	(cd src && make)
 
 all: src/tcp-helper
 
-install: all
+install: all $BINPREFIX $LIBPREFIX $SKEL
 	cp bin/frith bin/tails-clone-persistent $BINPREFIX/
 	chown root:root $BINPREFIX/frith $BINPREFIX/tails-clone-persistent
 	chmod 755 $BINPREFIX/frith $BINPREFIX/tails-clone-persistent
