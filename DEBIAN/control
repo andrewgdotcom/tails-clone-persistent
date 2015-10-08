@@ -1,0 +1,12 @@
+Package: frith
+Version: 0.0.43
+Section: main
+Priority: extra
+Architecture: i386
+Depends: gnupg, gnupg2, monkeysphere, openssh-client, perl, libfile-homedir-perl, libdatetime-perl, libemail-valid-perl, libterm-readkey-perl, perl-term-choose, libexpect-perl
+Replaces: monkeybox (<< 0.1.0)
+Breaks: monkeybox (<< 0.1.0)
+Maintainer: andrewg@andrewg.com
+Description: Offline PGP private key vault
+  A tool to simplify best-practice PGP key management. Not recommended for use
+  on general purpose machines (laptops/desktops/servers). Use Tails.

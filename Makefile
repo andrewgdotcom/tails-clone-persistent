@@ -1,36 +1,34 @@
-DPKG_DEST=~/build/
-PREFIX=$DPKG_DEST/frith
+DPKG_DEST = ~/build
+PREFIX = $(DPKG_DEST)/frith
 
-BINPREFIX=$PREFIX/usr/bin
-LIBPREFIX=$PREFIX/var/lib/frith
-SKEL=$LIBPREFIX/skel
-
-$BINPREFIX:
-	mkdir -p $BINPREFIX
-
-$LIBPREFIX:
-	mkdir -p $LIBPREFIX
-
-$SKEL:
-	mkdir -p $SKEL
-
-src/tcp-helper: src/tcp-helper.c
-	(cd src && make)
+BINPREFIX = $(PREFIX)/usr/bin
+LIBPREFIX = $(PREFIX)/var/lib/frith
+SKEL = $(LIBPREFIX)/skel
 
 all: src/tcp-helper
 
-install: all $BINPREFIX $LIBPREFIX $SKEL
-	cp bin/frith bin/tails-clone-persistent $BINPREFIX/
-	chown root:root $BINPREFIX/frith $BINPREFIX/tails-clone-persistent
-	chmod 755 $BINPREFIX/frith $BINPREFIX/tails-clone-persistent
-	cp src/tcp-helper $LIBPREFIX/
-	chown root:root $LIBPREFIX/tcp-helper
-	chmod 4755 $LIBPREFIX/tcp-helper
-	cp skel/* $SKEL/
-	chown -R root:root $SKEL/
-	chmod 600 $SKEL/live-additional-software.conf $SKEL/persistence.conf
+$(BINPREFIX) $(LIBPREFIX) $(SKEL):
+	sudo mkdir -p $@
 
-install-debbuild: install
-	cp DEBIAN $PREFIX/
-	dpkg-deb --build $PREFIX $DPKG_DEST
+src/tcp-helper:
+	(cd src && make)
+
+install: all $(BINPREFIX) $(LIBPREFIX) $(SKEL)
+	sudo cp bin/frith bin/tails-clone-persistent $(BINPREFIX)/
+	sudo chmod 755 $(BINPREFIX)/frith $(BINPREFIX)/tails-clone-persistent
+	sudo cp src/tcp-helper $(LIBPREFIX)/
+	sudo chmod 4755 $(LIBPREFIX)/tcp-helper
+	sudo cp -R skel/* $(SKEL)/
+	sudo chmod 600 $(SKEL)/live-additional-software.conf $(SKEL)/persistence.conf
+
+clean:
+	(cd src && make clean)
+
+deb: install
+	sudo cp -R DEBIAN $(PREFIX)/
+	sudo dpkg-deb --build $(PREFIX) $(DPKG_DEST)
+
+deb-clean: clean
+	sudo rm -rf $(BINPREFIX)/frith $(BINPREFIX)/tails-clone-persistent \
+		$(LIBPREFIX)/tcp-helper $(SKEL)
 

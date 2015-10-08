@@ -1,0 +1,32 @@
+#!/bin/bash
+set -e
+
+# tails persistence location
+TAILSDATA=/live/persistence/TailsData_unlocked
+# where we keep stuff
+FRITHLIB=/var/lib/frith
+
+# only do postinst when installed on Tails
+if [ -d $TAILSDATA ]; then
+  # cache a copy of the distribution media in skel, so that a fresh install on
+  # another tails drive doesn't have to wait for network connectivity
+  # use no-clobber so that package distributed files take priority over local
+  #
+  # this is too crude: it leaks data about the parent image onto the child
+  # and doubles the amount of space required for cache on the parent
+  # REWRITE!
+  cp -an $TAILSDATA/apt/cache/* $FRITHLIB/skel/apt/cache
+  cp -an $TAILSDATA/apt/lists/* $FRITHLIB/skel/apt/lists
+  cp -an $TAILSDATA/apt/conf/* $FRITHLIB/skel/apt/conf
+
+  # make sure file permissions and ownerships are correct
+  chmod 4755 $FRITHLIB/tcp-helper
+  chmod 600 $FRITHLIB/skel/live-additional-software.conf $FRITHLIB/skel/persistence.conf
+  chown tails-persistence-setup:tails-persistence-setup $FRITHLIB/skel/live-additional-software.conf $FRITHLIB/skel/persistence.conf
+
+  if [ -f /live/persistence/TailsData_unlocked/live-additional-software.conf ]; then
+    # package name migration helper (no longer required)
+    sed -i 's/^monkeybox$/frith/' /live/persistence/TailsData_unlocked/live-additional-software.conf || exit 1
+  fi
+fi
+
