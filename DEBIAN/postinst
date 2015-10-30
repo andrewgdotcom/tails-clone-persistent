@@ -19,6 +19,9 @@ if [ -d $TAILSDATA ]; then
   cp -an $TAILSDATA/apt/lists/* $FRITHLIB/skel/apt/lists
   cp -an $TAILSDATA/apt/conf/* $FRITHLIB/skel/apt/conf
 
+  # also make a copy now of /etc/skel/.gnupg, otherwise we lose defaults
+  cp -an /etc/skel/.gnupg $FRITHLIB/skel/gnupg
+
   # make sure file permissions and ownerships are correct
   chmod 4755 $FRITHLIB/tcp-helper
   chmod 600 $FRITHLIB/skel/live-additional-software.conf $FRITHLIB/skel/persistence.conf
