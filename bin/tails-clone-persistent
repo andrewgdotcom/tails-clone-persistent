@@ -6,7 +6,7 @@ my $version = '0.1';
 #
 # tails-clone-persistent
 #
-# We call /var/lib/frith/tcp-helper to do the dirty work. It is setuid
+# We call /var/lib/tcp-helper to do the dirty work. It is setuid
 # root (in order to create filesystems and set permissions) but has
 # no user interaction or intelligence. That's all safely in here.
 #
@@ -38,8 +38,8 @@ my $DEBUG;
 
 my $expect_timeout = 300; # Five minutes should be PLENTY
 my $persist_location = '/live/persistence/TailsData_unlocked/';
-my $skel_location = '/var/lib/frith/skel';
-my $helper_utility = '/var/lib/frith/tcp-helper';
+my $helper_utility = '/usr/sbin/tcp-helper';
+
 
 ###############
 # Houskeeping #
@@ -80,10 +80,10 @@ disk should already have Tails installed (use the Tails installer).
 
 It takes the following options:
 
---help  This help
---debug Debugging information
---skel  Copy the contents of ${skel_location} instead
---pull  Clone another persistent partition to this one (needs root)
+--help     This help
+--debug    Debugging information
+--skel=DIR Copy the contents of DIR instead
+--pull     Clone another persistent partition to this one (needs root)
 
 ];
 }
@@ -334,7 +334,8 @@ sub main {
 		}
 		&clone_from_tails;
 	} elsif($CMD_OPTIONS{'skel'}) {
-		&clone_to_tails($skel_location);
+		die "--skel requires a non-zero argument\n" if $CMD_OPTIONS{'skel'} eq "";
+		&clone_to_tails($CMD_OPTIONS{'skel'});
 	} else {
 		&clone_to_tails($persist_location);
 	}
