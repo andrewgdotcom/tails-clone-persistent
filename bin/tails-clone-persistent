@@ -244,7 +244,7 @@ sub clone_to_tails() {
 	
 	# sanitise input
 	die "found unsafe characters in source location" unless 
-		$source_location_unsafe =~ m!^([[:alnum:][:digit:]/_.+=-]+)$!;
+		$source_location_unsafe =~ m!^([[:alnum:][:digit:]/_.,+=-]+)$!;
 	my $source_location = $1;
 	
 	die "could not determine running Tails partition" unless $tails_partition;
