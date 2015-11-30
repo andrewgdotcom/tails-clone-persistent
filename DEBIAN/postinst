@@ -24,7 +24,7 @@ if [ -d $TAILSDATA ]; then
   chown -R amnesia:amnesia $FRITHLIB/skel/gnupg
 
   # make sure file permissions and ownerships are correct
-  chmod 4755 $FRITHLIB/tcp-helper
+  chmod 4755 /usr/sbin/tcp-helper
   chmod 600 $FRITHLIB/skel/live-additional-software.conf $FRITHLIB/skel/persistence.conf
   chown tails-persistence-setup:tails-persistence-setup $FRITHLIB/skel/live-additional-software.conf $FRITHLIB/skel/persistence.conf
 
