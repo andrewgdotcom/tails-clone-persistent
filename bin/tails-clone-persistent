@@ -239,8 +239,13 @@ sub mount_device {
 
 
 sub clone_to_tails() {	
-	my $source_location = shift;
+	my $source_location_unsafe = shift;
 	my $tails_partition = &get_tails_partition();
+	
+	# sanitise input
+	die "found unsafe characters in source location" unless 
+		$source_location_unsafe =~ m!^([[:alnum:][:digit:]/_.+=-]+)$!;
+	my $source_location = $1;
 	
 	die "could not determine running Tails partition" unless $tails_partition;
 	print "Tails volume found on $tails_partition\n" if $CMD_OPTIONS{'debug'};
