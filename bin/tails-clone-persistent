@@ -6,7 +6,7 @@ my $version = '0.1';
 #
 # tails-clone-persistent
 #
-# We call /var/lib/tcp-helper to do the dirty work. It is setuid
+# We call /usr/sbin/tcp-helper to do the dirty work. It is setuid
 # root (in order to create filesystems and set permissions) but has
 # no user interaction or intelligence. That's all safely in here.
 #
