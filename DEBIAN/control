@@ -1,12 +1,11 @@
-Package: frith
-Version: 0.0.47-2
+Package: tails-clone-persistent
+Version: 0.0.48
 Section: main
 Priority: extra
 Architecture: i386
-Depends: gnupg, gnupg2, monkeysphere, openssh-client, perl, libfile-homedir-perl, libdatetime-perl, libemail-valid-perl, libterm-readkey-perl, perl-term-choose, libexpect-perl
-Replaces: monkeybox (<< 0.1.0)
-Breaks: monkeybox (<< 0.1.0)
+Depends: perl, libfile-homedir-perl, libdatetime-perl, libterm-readkey-perl, perl-term-choose, libexpect-perl
+Breaks: frith (<< 0.0.48)
 Maintainer: andrewg@andrewg.com
-Description: Offline PGP private key vault
-  A tool to simplify best-practice PGP key management. Not recommended for use
-  on general purpose machines (laptops/desktops/servers). Use Tails.
+Description: Tails persistent volume cloner
+  A simple tool to clone the live Tails persistent volume to another (new or 
+  pre-existing) Tails persistent volume.
