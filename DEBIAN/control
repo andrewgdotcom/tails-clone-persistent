@@ -1,10 +1,11 @@
 Package: tails-clone-persistent
-Version: 0.0.48
+Version: 0.0.48-1
 Section: main
 Priority: extra
 Architecture: i386
 Depends: perl, libfile-homedir-perl, libdatetime-perl, libterm-readkey-perl, perl-term-choose, libexpect-perl
 Breaks: frith (<< 0.0.48)
+Replaces: frith (<< 0.0.48)
 Maintainer: andrewg@andrewg.com
 Description: Tails persistent volume cloner
   A simple tool to clone the live Tails persistent volume to another (new or 
