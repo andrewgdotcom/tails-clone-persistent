@@ -10,7 +10,10 @@
 
 #define _DEBUG false
 
-// can we detect this instead of hard coding it?
+// we should detect this instead of hard coding it
+// write a c function that does:
+// parted $block_device p|perl -ne 'print $1 if /\s+\d+\s+(\w+)\b.*\bTailsData\b/'
+
 #define _TAILS_FREE_START std::string("2621")
 
 // tails uses a 64 bit kernel, but 32bit userspace.
@@ -70,8 +73,7 @@ void do_copy(std::string source_location, std::string block_device, std::string 
 	if(_DEBUG) std::cerr << "Crypted volume mounted on " << mount_point << "\n";
 
 	// run rsync to copy files. Note that --delete does NOT delete
-	// --exclude'd files on the target. This is fine: lost+found should
-	// be kept, and random_seed does no harm. Does it?
+	// --exclude'd files on the target.
 	std::cout << "Copying files...";
 	system((_STR + "/usr/bin/rsync -a --delete --exclude=gnupg/random_seed --exclude=lost+found " + source_location + "/ " + mount_point).c_str());
 	std::cout << "done\n";
