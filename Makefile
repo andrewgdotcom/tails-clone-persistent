@@ -9,7 +9,7 @@ all: src/tcp-helper
 $(BINPREFIX) $(SBINPREFIX) :
 	sudo mkdir -p $@
 
-src/tcp-helper:
+src/tcp-helper: src/tcp-helper.c
 	(cd src && make)
 
 install: all $(BINPREFIX) $(SBINPREFIX)

@@ -10,19 +10,56 @@
 
 #define _DEBUG false
 
-// we should detect this instead of hard coding it
-// write a c function that does:
-// parted $block_device p|perl -ne 'print $1 if /\s+\d+\s+(\w+)\b.*\bTailsData\b/'
-
-#define _TAILS_FREE_START std::string("2621")
-
 // tails uses a 64 bit kernel, but 32bit userspace.
 // apt-get install libc6-dev-i386 g++-multilib
 // g++ -m32 tcp-helper.c -o tcp-helper
 
 // trick to force string concatenation with +
 #define _STR std::string("")
-//#define _STR std::string("echo ")
+//#define _STR std::string("echo ") //debugging
+
+// parted cannot automatically find the beginning of free space, so we
+// have to do it ourselves
+std::string tails_free_start(std::string block_device) {
+//	std::string start ("2621MB");
+	
+	FILE *pipe = popen((_STR + 
+		"/sbin/parted " + block_device + " p").c_str(), "r");
+	if(!pipe) return("");
+	
+	size_t len, offset;
+	char *line, buffer[100];
+	line = (char *)malloc(1000);
+	buffer[0]='\0';
+	
+	// find the location of the string "End\s+" in the line buffer
+	// if this succeeds, then overwrite the line buffer with the next 
+	// line and copy out what falls in the same window
+	// this should be "2621MB\s+" or similar
+	
+	while(fgets(line, 1000, pipe)) {
+		if(_DEBUG) std::cerr << "Got input: " << line;
+		std::string temp = line;
+		if((offset=temp.find("End ")) && 
+				(len=temp.find("Size ")-offset)) {
+			if(fgets(line, 1000, pipe)) {
+				strncpy(buffer, line+offset, len);
+				if(_DEBUG) std::cerr << "Got end: " << buffer;
+				// sanity check that no more partitions exist
+				if(fgets(line, 1000, pipe)) {
+					if(strlen(line) > 3) {
+						if(_DEBUG) std::cerr << "PANIC: unexpected partitions!";
+						buffer[0]='\0';
+					}
+				}
+			}
+			break;
+		}
+	}
+	fclose(pipe);
+	
+	return _STR + buffer;
+}
 
 std::string mount_device(std::string device) {
 	std::string mount_point ("");
@@ -57,8 +94,13 @@ void do_copy(std::string source_location, std::string block_device, std::string 
 		std::cout << "Using existing partition\n";
 		system((_STR + "/sbin/cryptsetup luksOpen " + partition + " TailsData_target").c_str());
 	} else if(mode.compare("--new")==0) {
+		std::string start = tails_free_start(block_device);
+		if(start.compare("")==0) {
+			std::cerr << "Could not detect start of free space\n";
+			exit(1);
+		}
 		std::cout << "Creating new partition\n";
-		system((_STR + "/sbin/parted -s " + block_device + " mkpart primary " + _TAILS_FREE_START + " 100%").c_str());
+		system((_STR + "/sbin/parted -s " + block_device + " mkpart primary " + start + " 100%").c_str());
 		system((_STR + "/sbin/parted -s " + block_device + " name 2 TailsData").c_str());
 		system((_STR + "/sbin/cryptsetup luksFormat " + partition).c_str());
 		system((_STR + "/sbin/cryptsetup luksOpen " + partition + " TailsData_target").c_str());
