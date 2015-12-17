@@ -21,7 +21,6 @@
 // parted cannot automatically find the beginning of free space, so we
 // have to do it ourselves
 std::string tails_free_start(std::string block_device) {
-//	std::string start ("2621MB");
 	
 	FILE *pipe = popen((_STR + 
 		"/sbin/parted " + block_device + " p").c_str(), "r");
@@ -32,28 +31,34 @@ std::string tails_free_start(std::string block_device) {
 	line = (char *)malloc(1000);
 	buffer[0]='\0';
 	
+	// fast-forward past the disk info until we find a blank line
+	while(fgets(line, 1000, pipe) && !feof(pipe)) {
+		if(strlen(line) < 3) break;
+		if(_DEBUG) std::cerr << "Skipping line: " << line;
+	}
+
 	// find the location of the string "End\s+" in the line buffer
 	// if this succeeds, then overwrite the line buffer with the next 
 	// line and copy out what falls in the same window
 	// this should be "2621MB\s+" or similar
 	
-	while(fgets(line, 1000, pipe)) {
+	if(fgets(line, 1000, pipe) && !feof(pipe)) {
 		if(_DEBUG) std::cerr << "Got input: " << line;
 		std::string temp = line;
 		if((offset=temp.find("End ")) && 
 				(len=temp.find("Size ")-offset)) {
-			if(fgets(line, 1000, pipe)) {
+			if(fgets(line, 1000, pipe) && !feof(pipe)) {
 				strncpy(buffer, line+offset, len);
-				if(_DEBUG) std::cerr << "Got end: " << buffer;
+				if(_DEBUG) std::cerr << "Got partition end location: " << buffer <<"\n";
+				
 				// sanity check that no more partitions exist
-				if(fgets(line, 1000, pipe)) {
+				if(fgets(line, 1000, pipe) && !feof(pipe)) {
 					if(strlen(line) > 3) {
-						if(_DEBUG) std::cerr << "PANIC: unexpected partitions!";
+						std::cerr << "Found too many partitions!\n";
 						buffer[0]='\0';
 					}
 				}
 			}
-			break;
 		}
 	}
 	fclose(pipe);
@@ -71,7 +76,7 @@ std::string mount_device(std::string device) {
 	if(!pipe) return("");
 
 	char line[1000];
-	while(fgets(line, 1000, pipe)) {
+	while(fgets(line, 1000, pipe) && !feof(pipe)) {
 		if(_DEBUG) std::cerr << "Got input: " << line;
 		char *bookmark, *bit1, *bit2, *bit3;
 		// don't test the result of bit2, as it is unpredictable
