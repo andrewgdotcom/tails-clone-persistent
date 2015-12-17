@@ -33,9 +33,6 @@ use Term::Choose qw(choose); 	# cpan
 # moved to setuid helper
 #my $tails_free_start = 2621;
 
-my $DEBUG;
-#$DEBUG=1;
-
 my $expect_timeout = 300; # Five minutes should be PLENTY
 my $persist_location = '/live/persistence/TailsData_unlocked/';
 my $helper_utility = '/usr/sbin/tcp-helper';
@@ -262,9 +259,10 @@ sub clone_to_tails() {
 	} else {
 		my $passphrase = &ask_passphrase;
 		
+		$ENV{'TCP_HELPER_DEBUG'}='1' if $CMD_OPTIONS{'debug'};
 		my $exp = Expect->spawn($helper_utility, $source_location, $block_device, "--new");
 		die "Could not run ${helper_utility}\n" unless $exp;
-		if($DEBUG) {
+		if($CMD_OPTIONS{'debug'}) {
 			$exp->exp_internal(1);
 		} else {
 			$exp->log_stdout(0);

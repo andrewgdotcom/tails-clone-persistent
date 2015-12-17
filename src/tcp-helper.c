@@ -49,6 +49,9 @@ std::string tails_free_start(std::string block_device) {
 				(len=temp.find("Size ")-offset)) {
 			if(fgets(line, 1000, pipe)) {
 				strncpy(buffer, line+offset, len);
+				// make double sure it's properly null terminated
+				buffer[len]='\0';
+				
 				if(_DEBUG) std::cerr << "Got partition end location: " << buffer <<"\n";
 				
 				// sanity check that no more partitions exist
