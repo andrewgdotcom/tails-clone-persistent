@@ -8,7 +8,7 @@
 #include <stdio.h>
 #include <sys/stat.h>
 
-#define _DEBUG false
+int _DEBUG;
 
 // tails uses a 64 bit kernel, but 32bit userspace.
 // apt-get install libc6-dev-i386 g++-multilib
@@ -32,7 +32,7 @@ std::string tails_free_start(std::string block_device) {
 	buffer[0]='\0';
 	
 	// fast-forward past the disk info until we find a blank line
-	while(fgets(line, 1000, pipe) && !feof(pipe)) {
+	while(fgets(line, 1000, pipe)) {
 		if(strlen(line) < 3) break;
 		if(_DEBUG) std::cerr << "Skipping line: " << line;
 	}
@@ -42,17 +42,17 @@ std::string tails_free_start(std::string block_device) {
 	// line and copy out what falls in the same window
 	// this should be "2621MB\s+" or similar
 	
-	if(fgets(line, 1000, pipe) && !feof(pipe)) {
+	if(fgets(line, 1000, pipe)) {
 		if(_DEBUG) std::cerr << "Got input: " << line;
 		std::string temp = line;
 		if((offset=temp.find("End ")) && 
 				(len=temp.find("Size ")-offset)) {
-			if(fgets(line, 1000, pipe) && !feof(pipe)) {
+			if(fgets(line, 1000, pipe)) {
 				strncpy(buffer, line+offset, len);
 				if(_DEBUG) std::cerr << "Got partition end location: " << buffer <<"\n";
 				
 				// sanity check that no more partitions exist
-				if(fgets(line, 1000, pipe) && !feof(pipe)) {
+				if(fgets(line, 1000, pipe)) {
 					if(strlen(line) > 3) {
 						std::cerr << "Found too many partitions!\n";
 						buffer[0]='\0';
@@ -76,7 +76,7 @@ std::string mount_device(std::string device) {
 	if(!pipe) return("");
 
 	char line[1000];
-	while(fgets(line, 1000, pipe) && !feof(pipe)) {
+	while(fgets(line, 1000, pipe)) {
 		if(_DEBUG) std::cerr << "Got input: " << line;
 		char *bookmark, *bit1, *bit2, *bit3;
 		// don't test the result of bit2, as it is unpredictable
@@ -144,6 +144,9 @@ void do_copy(std::string source_location, std::string block_device, std::string 
 }
 
 int main(int ARGC, char **ARGV) {
+	if(getenv("TCP_HELPER_DEBUG")) {
+		_DEBUG=1;
+	}
 	if(ARGC != 4 || !(!strcmp(ARGV[3], "--existing") || !strcmp(ARGV[3], "--new")) ){
 		std::cerr << "Usage: " << ARGV[0] << " SOURCE_DIR BLOCK_DEVICE (--existing|--new)\n";
 		exit(-1);
