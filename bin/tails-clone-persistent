@@ -30,9 +30,6 @@ use Term::Choose qw(choose); 	# cpan
 
 #use Linux::ACL;					# not packaged?
 
-# moved to setuid helper
-#my $tails_free_start = 2621;
-
 my $expect_timeout = 300; # Five minutes should be PLENTY
 my $persist_location = '/live/persistence/TailsData_unlocked/';
 my $helper_utility = '/usr/sbin/tcp-helper';
@@ -205,7 +202,7 @@ sub choose_block_device {
 			layout => 3,
 		}
 	  )) {
-		print qq[Insert a new drive (minimum 4GB, recommended 8gb) and press enter...];
+		print qq[Insert a new drive (minimum 4GB) and press enter...];
 		ReadLine(0);
 		system('liveusb-creator', '-u', '-n', '--clone', '-P', '-m', '-x');
 		return &choose_block_device($prompt, $except);
