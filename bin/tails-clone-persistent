@@ -19,34 +19,15 @@ use warnings;
 use Expect;
 use Gtk2 '-init';
 
+#use Linux::ACL;		# would be nice but it's not packaged
+
 # Secure our path
 $ENV{'PATH'} = '/bin:/usr/bin:/sbin:/usr/sbin';
-
-use Term::ReadKey; 				# libterm-readkey-perl
-
-# cpan libs (we'll have to package these ourselves)
-# the rpm/alien version of Term::Choose is installed in a stupid place
-use lib "/usr/lib/perl5/vendor_perl/5.22.0";
-use Term::Choose qw(choose); 	# cpan 
-
-#use Linux::ACL;					# not packaged?
 
 my $expect_timeout = 300; # Five minutes should be PLENTY
 my $persist_location = '/live/persistence/TailsData_unlocked/';
 my $helper_utility = '/usr/sbin/tcp-helper';
 
-
-###############
-# Houskeeping #
-###############
-
-END {
-	# clean up our own mess	
-	ReadMode(0);
-	system('/bin/stty', 'sane');
-} 
-
-my $menu = new Term::Choose();
 
 
 #############################
@@ -85,7 +66,7 @@ It takes the following options:
 
 
 ################################
-# New graphical subroutines    #
+# Graphical interface routines #
 ################################
 
 
@@ -286,7 +267,7 @@ sub make_submenu() {
 sub make_confirm() {
 	my $prompt = shift;
 	my $input='';
-	$working_label->set_text($prompt);
+	$working_label->set_text('I am about to ' . $prompt . '. Continue?');
 	
 	$working_hbox->show;
 	$pass_hbox->hide;
@@ -315,97 +296,6 @@ sub make_prompt() {
 	return &make_confirm($prompt . qq[ and click "Continue"...]);
 }
 
-
-
-
-################################
-# Old term::choose subroutines #
-################################
-
-
-#sub secure_input() {
-#	my $prompt = shift;
-#	ReadMode('noecho');
-#	print $prompt;
-#	my $input=ReadLine(0);
-#	$input =~ s/[\n\r\f\t]//g;
-#	print "\n";
-#	ReadMode('restore');
-#	return $input;
-#}
-
-
-#sub ask_passphrase() {
-	#print(q[A passphrase will be used to encrypt your persistent data.
-
-#The passphrase should contain at least 16 characters, and at least one 
-#non-alphanumeric character, such as punctuation.
-
-#]);
-	#my $passphrase;
-	#my $confirm;
-	#do {
-		#$passphrase = &secure_input('Crypted disk passphrase: ');
-		#while(
-			#length($passphrase) < 16 or
-			#! $passphrase =~ /[^[:alnum:]]/
-		#) {
-			#$passphrase = &secure_input(q[Passphrase is not strong enough.
-			
-#Crypted disk passphrase: ]);
-		#}
-		#$confirm = &secure_input('Confirm: ');
-		#print "\nConfirmation does not match\n" unless $passphrase eq $confirm;
-		
-	#} until($passphrase eq $confirm);
-	
-	#return $passphrase;
-#}
-
-
-#sub make_submenu() {
-	#my $heading = shift;
-	#my $response = $menu->choose(
-		#[@_, undef],
-		#{
-			#prompt => "${heading}\n\n",
-			#undef  => 'Cancel',
-			#layout => 3,
-		#}
-	#);
-	#return $response;
-#}
-
-#sub make_confirm() {
-	#my $heading = shift;
-	#my $response = $menu->choose(
-		#[undef, 'Yes, I am really really sure'],
-		#{
-			#prompt => "Are you really really sure you want to ${heading}?\n\n",
-			#undef  => 'On second thoughts, no',
-			#layout => 3,
-		#}
-	#);
-	#return $response;
-#}
-
-#sub make_confirm_liveusb_create() {
-	#my $response = $menu->choose(
-		#[undef, 'Yes'],
-		#{
-			#prompt => "No other tails drives found. Do you want to create one?\n\n",
-			#undef => 'Not now',
-			#layout => 3,
-		#}
-	#);
-	#return $response;
-#}
-
-#sub make_prompt() {
-	#my $prompt = shift;
-	#print $prompt . qq[ and press enter...];
-	#ReadLine(0);
-#}
 
 
 #################################
