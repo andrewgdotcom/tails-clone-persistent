@@ -574,6 +574,8 @@ sub clone_from_tails {
 
 sub main {
 	&parse_options;
+	&graphic_window_init;
+	
 	if($CMD_OPTIONS{'help'}) {
 		&option_help;
 	} elsif($CMD_OPTIONS{'pull'}) {
