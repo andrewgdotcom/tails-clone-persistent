@@ -498,38 +498,44 @@ sub clone_to_tails() {
 	if(-b "${block_device}2") {
 		return unless &make_confirm("overwrite the existing persistent partition on ${block_device}");
 
-		my $retval = system($helper_utility, $source_location, $block_device, '--existing');
-		die "Could not run ${helper_utility}\n" if $retval != 0;
+		my $passphrase = &secure_input('Please enter the passphrase for the existing persistent partition');
+		
+		$partition_state='--existing';
 	} else {
 		my $passphrase = &ask_passphrase;
 		
-		$ENV{'TCP_HELPER_DEBUG'}='1' if $CMD_OPTIONS{'debug'};
-		my $exp = Expect->spawn($helper_utility, $source_location, $block_device, "--new");
-		die "Could not run ${helper_utility}\n" unless $exp;
-		if($CMD_OPTIONS{'debug'}) {
-			$exp->exp_internal(1);
-		} else {
-			$exp->log_stdout(0);
-		};
-		
-		$exp->expect($expect_timeout,[
-			"Cannot exec", sub{
-				die "Could not run ${helper_utility}\n";
-			}], [
-			"Type uppercase yes", sub{
-				my $self=shift;
-				$self->send("YES\n");
-				exp_continue;
-			}], [
-			"(Enter|Verify) passphrase", sub{
-				my $self=shift;
-				# allow subprocess to flush input buffer on slow H/W
-				sleep(1);
-				$self->send("${passphrase}\n");
-				exp_continue;
-			}]
-		);
-	} 
+		$partition_state='--new';
+	}
+	
+	# Now call expect to handle the setuid helper
+	
+	$ENV{'TCP_HELPER_DEBUG'}='1' if $CMD_OPTIONS{'debug'};
+	my $exp = Expect->spawn($helper_utility, $source_location, $block_device, $partition_state);
+	die "Could not run ${helper_utility}\n" unless $exp;
+
+	if($CMD_OPTIONS{'debug'}) {
+		$exp->exp_internal(1);
+	} else {
+		$exp->log_stdout(0);
+	};
+	
+	$exp->expect($expect_timeout,[
+		"Cannot exec", sub{
+			die "Could not run ${helper_utility}\n";
+		}], [
+		"Type uppercase yes", sub{
+			my $self=shift;
+			$self->send("YES\n");
+			exp_continue;
+		}], [
+		"(Enter|Verify) passphrase", sub{
+			my $self=shift;
+			# allow subprocess to flush input buffer on slow H/W
+			sleep(1);
+			$self->send("${passphrase}\n");
+			exp_continue;
+		}]
+	);
 }
 
 
