@@ -259,10 +259,9 @@ non-alphanumeric character, such as punctuation.
 
 sub make_submenu() {
 	my $prompt = shift;
-	my $entries = shift;
 	$working_label->set_text($prompt);
 	
-	foreach my $i (@$entries) {
+	foreach my $i (@_) {
 		$chooser->append_text($i);
 	}
 	$chooser->set_active(0);
@@ -280,7 +279,7 @@ sub make_submenu() {
 	
 	my $index=$chooser->get_active;
 	
-	return @$entries[$index];
+	return $_[$index];
 	
 }
 
