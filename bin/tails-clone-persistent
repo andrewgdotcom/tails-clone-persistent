@@ -482,6 +482,7 @@ sub mount_device {
 sub clone_to_tails() {	
 	my $source_location_unsafe = shift;
 	my $tails_partition = &get_tails_partition();
+	my $partition_state;
 	
 	# sanitise input
 	die "found unsafe characters in source location" unless 
