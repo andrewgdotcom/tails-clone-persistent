@@ -17,6 +17,7 @@ use strict;
 use warnings;
 
 use Expect;
+use Gtk2 '-init';
 
 # Secure our path
 $ENV{'PATH'} = '/bin:/usr/bin:/sbin:/usr/sbin';
@@ -84,91 +85,328 @@ It takes the following options:
 
 
 ################################
+# New graphical subroutines    #
+################################
+
+
+# Need global access to window, hboxes to toggle visibility
+my ($graphic_window, $working_hbox, $pass_hbox, $pass_confirm_hbox, $chooser_hbox, $button_hbox);
+
+# Need global access to particular widgets to read and write contents
+my ($working_label, $pass_entry, $pass_confirm_entry, $chooser);
+
+# Event success flag
+my ($event_outcome);
+
+sub graphic_window_init() {
+
+	$graphic_window = Gtk2::Window->new();
+	$graphic_window->set_title('Persistent Volume Cloner');
+	$graphic_window->signal_connect('delete-event' => sub {exit(-1);});
+
+	my $vbox = Gtk2::VBox->new;
+
+	# First a label - we'll fill this with relevant information as we go.
+
+	$working_hbox = Gtk2::HBox->new;
+	$working_label = Gtk2::Label->new('Working...');
+
+	$working_hbox->pack_start($working_label, 0,0,5);
+	$vbox->pack_start($working_hbox, 0,0,5);
+
+	# Passphrase entry
+
+	$pass_hbox = Gtk2::HBox->new;
+	
+	my $pass_label = Gtk2::Label->new('Passphrase:');
+
+	$pass_entry = Gtk2::Entry->new;
+	$pass_entry->set_visibility(0);
+	$pass_entry->set_invisible_char('*');
+	
+	$pass_hbox->pack_start($pass_label, 0,0,5);
+	$pass_hbox->pack_start($pass_entry, 1,1,5);
+	$vbox->pack_start($pass_hbox, 0,0,0);
+
+	# And confirm...
+
+	$pass_confirm_hbox = Gtk2::HBox->new;
+
+	my $pass_confirm_label = Gtk2::Label->new('Confirm:');
+
+	$pass_confirm_entry = Gtk2::Entry->new;
+	$pass_confirm_entry->set_visibility(0);
+	$pass_confirm_entry->set_invisible_char('*');
+
+	$pass_confirm_hbox->pack_start($pass_confirm_label, 0,0,5);
+	$pass_confirm_hbox->pack_start($pass_confirm_entry, 1,1,5);
+	$vbox->pack_start($pass_confirm_hbox, 0,0,5);
+
+	# Chooser
+	# We create this empty now, and add entries to it later 
+	# Note the perl GTK2 interface doesn't implement ComboBoxText yet.
+
+	$chooser_hbox = Gtk2::HBox->new;
+	$chooser = Gtk2::ComboBox->new_text;
+
+	$chooser_hbox->pack_start($chooser, 1,1,5);
+	$vbox->pack_start($chooser_hbox, 0,0,5);
+
+	# Quit and Continue buttons. We'll reuse these as much as we can.
+
+	$button_hbox = Gtk2::HBox->new;
+	
+	my $quit_button = Gtk2::Button->new_with_mnemonic('_Quit');
+	$quit_button->signal_connect('clicked'=> sub{$event_outcome=0; Gtk2->main_quit});
+
+	my $continue_button = Gtk2::Button->new_with_mnemonic('_Continue');
+	$continue_button->signal_connect('clicked'=> sub{$event_outcome=1; Gtk2->main_quit});
+
+	$button_hbox->pack_end($continue_button, 0,0,5);
+	$button_hbox->pack_end($quit_button, 0,0,5);
+	$vbox->pack_end($button_hbox, 0,0,5);
+
+	# add vbox to window and show everything in the vbox by default
+	# we'll hide specific hboxes elsewhere
+	
+	$graphic_window->add($vbox);
+	$vbox->show_all;
+
+}
 
 
 sub secure_input() {
 	my $prompt = shift;
-	ReadMode('noecho');
-	print $prompt;
-	my $input=ReadLine(0);
-	$input =~ s/[\n\r\f\t]//g;
-	print "\n";
-	ReadMode('restore');
+	my $input='';
+	$working_label->set_text($prompt);
+	$pass_entry->set_text('');
+	
+	$working_hbox->show;
+	$pass_hbox->show;
+	$pass_confirm_hbox->hide;
+	$chooser_hbox->hide;
+	
+	$event_outcome=0;
+	$graphic_window->show;
+	Gtk2->main;
+	
+	if($event_outcome){
+		$input=$pass_entry->get_text();
+		$input =~ s/[\n\r\f\t]//g;
+	}
+
+	$pass_entry->set_text('');
 	return $input;
 }
 
 
 sub ask_passphrase() {
-	print(q[A passphrase will be used to encrypt your persistent data.
+	$working_label->set_text(
+	q[A passphrase will be used to encrypt your persistent data.
 
 The passphrase should contain at least 16 characters, and at least one 
 non-alphanumeric character, such as punctuation.
 
 ]);
-	my $passphrase;
-	my $confirm;
-	do {
-		$passphrase = &secure_input('Crypted disk passphrase: ');
-		while(
-			length($passphrase) < 16 or
-			! $passphrase =~ /[^[:alnum:]]/
-		) {
-			$passphrase = &secure_input(q[Passphrase is not strong enough.
-			
-Crypted disk passphrase: ]);
-		}
-		$confirm = &secure_input('Confirm: ');
-		print "\nConfirmation does not match\n" unless $passphrase eq $confirm;
-		
-	} until($passphrase eq $confirm);
+	my ($passphrase, $confirm, $success);
 	
+	do {
+		$pass_entry->set_text('');
+		$pass_confirm_entry->set_text('');
+		
+		$working_hbox->show;
+		$pass_hbox->show;
+		$pass_confirm_hbox->show;
+		$chooser_hbox->hide;
+
+		$graphic_window->show;
+		Gtk2->main;
+		
+		return '' unless $event_outcome;
+		
+		$passphrase = $pass_entry->get_text();
+		$confirm = $pass_confirm_entry->get_text();
+		$passphrase =~ s/[\n\r\f\t]//g;
+		$confirm =~ s/[\n\r\f\t]//g;
+
+		if(length($passphrase) < 16 or
+			$passphrase !~ /[^[:alnum:]]/) {
+			$working_label->set_text(
+			q[PASSPHRASE IS NOT STRONG ENOUGH - PLEASE TRY AGAIN
+			
+The passphrase should contain at least 16 characters, and at least one 
+non-alphanumeric character, such as punctuation.
+
+]) ;
+		} elsif($passphrase ne $confirm) {
+			$working_label->set_text(
+			q[CONFIRMATION DOES NOT MATCH - PLEASE TRY AGAIN
+
+The passphrase should contain at least 16 characters, and at least one 
+non-alphanumeric character, such as punctuation.
+
+]);
+		} else {
+			$success=1;
+		}
+	} until($success);
+	
+	$pass_entry->set_text('');
+	$pass_confirm_entry->set_text('');
 	return $passphrase;
 }
 
 
 sub make_submenu() {
-	my $heading = shift;
-	my $response = $menu->choose(
-		[@_, undef],
-		{
-			prompt => "${heading}\n\n",
-			undef  => 'Cancel',
-			layout => 3,
-		}
-	);
-	return $response;
+	my $prompt = shift;
+	my $entries = shift;
+	$working_label->set_text($prompt);
+	
+	foreach my $i (@$entries) {
+		$chooser->append_text($i);
+	}
+	$chooser->set_active(0);
+	
+	$working_hbox->show;
+	$pass_hbox->hide;
+	$pass_confirm_hbox->hide;
+	$chooser_hbox->show;
+	
+	$event_outcome=0;
+	$graphic_window->show;
+	Gtk2->main;
+	
+	return '' unless $event_outcome;
+	
+	my $index=$chooser->get_active;
+	
+	return @$entries[$index];
+	
 }
 
 sub make_confirm() {
-	my $heading = shift;
-	my $response = $menu->choose(
-		[undef, 'Yes, I am really really sure'],
-		{
-			prompt => "Are you really really sure you want to ${heading}?\n\n",
-			undef  => 'On second thoughts, no',
-			layout => 3,
-		}
-	);
-	return $response;
+	my $prompt = shift;
+	my $input='';
+	$working_label->set_text($prompt);
+	
+	$working_hbox->show;
+	$pass_hbox->hide;
+	$pass_confirm_hbox->hide;
+	$chooser_hbox->hide;
+	
+	$event_outcome=0;
+	$graphic_window->show;
+	Gtk2->main;
+	
+	return $event_outcome;
 }
 
+
+############################################
+
+
+# Rewrite main routine to get rid of these
+
 sub make_confirm_liveusb_create() {
-	my $response = $menu->choose(
-		[undef, 'Yes'],
-		{
-			prompt => "No other tails drives found. Do you want to create one?\n\n",
-			undef => 'Not now',
-			layout => 3,
-		}
-	);
-	return $response;
+	return &make_confirm(q[No other tails drives found. Do you want to create a new one?]);
 }
 
 sub make_prompt() {
 	my $prompt = shift;
-	print $prompt . qq[ and press enter...];
-	ReadLine(0);
+	return &make_confirm($prompt . qq[ and click "Continue"...]);
 }
+
+
+
+
+################################
+# Old term::choose subroutines #
+################################
+
+
+#sub secure_input() {
+#	my $prompt = shift;
+#	ReadMode('noecho');
+#	print $prompt;
+#	my $input=ReadLine(0);
+#	$input =~ s/[\n\r\f\t]//g;
+#	print "\n";
+#	ReadMode('restore');
+#	return $input;
+#}
+
+
+#sub ask_passphrase() {
+	#print(q[A passphrase will be used to encrypt your persistent data.
+
+#The passphrase should contain at least 16 characters, and at least one 
+#non-alphanumeric character, such as punctuation.
+
+#]);
+	#my $passphrase;
+	#my $confirm;
+	#do {
+		#$passphrase = &secure_input('Crypted disk passphrase: ');
+		#while(
+			#length($passphrase) < 16 or
+			#! $passphrase =~ /[^[:alnum:]]/
+		#) {
+			#$passphrase = &secure_input(q[Passphrase is not strong enough.
+			
+#Crypted disk passphrase: ]);
+		#}
+		#$confirm = &secure_input('Confirm: ');
+		#print "\nConfirmation does not match\n" unless $passphrase eq $confirm;
+		
+	#} until($passphrase eq $confirm);
+	
+	#return $passphrase;
+#}
+
+
+#sub make_submenu() {
+	#my $heading = shift;
+	#my $response = $menu->choose(
+		#[@_, undef],
+		#{
+			#prompt => "${heading}\n\n",
+			#undef  => 'Cancel',
+			#layout => 3,
+		#}
+	#);
+	#return $response;
+#}
+
+#sub make_confirm() {
+	#my $heading = shift;
+	#my $response = $menu->choose(
+		#[undef, 'Yes, I am really really sure'],
+		#{
+			#prompt => "Are you really really sure you want to ${heading}?\n\n",
+			#undef  => 'On second thoughts, no',
+			#layout => 3,
+		#}
+	#);
+	#return $response;
+#}
+
+#sub make_confirm_liveusb_create() {
+	#my $response = $menu->choose(
+		#[undef, 'Yes'],
+		#{
+			#prompt => "No other tails drives found. Do you want to create one?\n\n",
+			#undef => 'Not now',
+			#layout => 3,
+		#}
+	#);
+	#return $response;
+#}
+
+#sub make_prompt() {
+	#my $prompt = shift;
+	#print $prompt . qq[ and press enter...];
+	#ReadLine(0);
+#}
 
 
 #################################
