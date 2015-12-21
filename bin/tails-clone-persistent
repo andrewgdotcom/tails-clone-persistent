@@ -152,6 +152,24 @@ sub make_confirm() {
 	return $response;
 }
 
+sub make_confirm_liveusb_create() {
+	my $response = $menu->choose(
+		[undef, 'Yes'],
+		{
+			prompt => "No other tails drives found. Do you want to create one?\n\n",
+			undef => 'Not now',
+			layout => 3,
+		}
+	);
+	return $response;
+}
+
+sub make_prompt() {
+	my $prompt = shift;
+	print $prompt + qq[ and press enter...];
+	ReadLine(0);
+}
+
 
 #################################
 
@@ -194,16 +212,8 @@ sub choose_block_device {
 	if(@block_devices) {
 		# TODO: give user better info in menu, e.g. make and model?
 		return &make_submenu($prompt, @block_devices);
-	} elsif($menu->choose(
-		[undef, 'Yes'],
-		{
-			prompt => "No other tails drives found. Do you want to create one?\n\n",
-			undef => 'Not now',
-			layout => 3,
-		}
-	  )) {
-		print qq[Insert a new drive (minimum 4GB) and press enter...];
-		ReadLine(0);
+	} elsif(&make_confirm_liveusb_create()) {
+		&make_prompt(qq[Insert a new USB drive (minimum 4GB)]);
 		system('liveusb-creator', '-u', '-n', '--clone', '-P', '-m', '-x');
 		return &choose_block_device($prompt, $except);
 	}
