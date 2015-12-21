@@ -166,7 +166,7 @@ sub make_confirm_liveusb_create() {
 
 sub make_prompt() {
 	my $prompt = shift;
-	print $prompt + qq[ and press enter...];
+	print $prompt . qq[ and press enter...];
 	ReadLine(0);
 }
 
