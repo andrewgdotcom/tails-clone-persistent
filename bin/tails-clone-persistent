@@ -482,7 +482,7 @@ sub mount_device {
 sub clone_to_tails() {	
 	my $source_location_unsafe = shift;
 	my $tails_partition = &get_tails_partition();
-	my $partition_state;
+	my ($partition_state, passphrase);
 	
 	# sanitise input
 	die "found unsafe characters in source location" unless 
@@ -499,12 +499,12 @@ sub clone_to_tails() {
 	if(-b "${block_device}2") {
 		return unless &make_confirm("overwrite the existing persistent partition on ${block_device}");
 
-		my $passphrase = &secure_input('Please enter the passphrase for the existing persistent partition');
+		$passphrase = &secure_input('Please enter the passphrase for the existing persistent partition');
 		
 		$partition_state='--existing';
 	} else {
-		my $passphrase = &ask_passphrase;
-		
+		$passphrase = &ask_passphrase;
+
 		$partition_state='--new';
 	}
 	
