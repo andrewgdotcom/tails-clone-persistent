@@ -28,6 +28,11 @@ my $expect_timeout = 300; # Five minutes should be PLENTY
 my $persist_location = '/live/persistence/TailsData_unlocked/';
 my $helper_utility = '/usr/sbin/tcp-helper';
 
+# for tails v2.x
+my $tails_installer = '/usr/share/tails-installer';
+
+# for tails v1.x
+my $v1_tails_installer = '/usr/bin/liveusb-creator';
 
 
 #############################
@@ -51,9 +56,6 @@ sub parse_options {
 sub option_help {
 	print qq[This is ${program} v${version}
 	 
-Clone the running Tails persistent partition to another. The target 
-disk should already have Tails installed (use the Tails installer).
-
 It takes the following options:
 
 --help     This help
@@ -341,7 +343,7 @@ sub choose_block_device {
 		return &make_submenu($prompt, @block_devices);
 	} elsif(&make_confirm_liveusb_create()) {
 		&make_prompt(qq[Insert a new USB drive (minimum 4GB)]);
-		system('liveusb-creator', '-u', '-n', '--clone', '-P', '-m', '-x');
+		system($tails_installer, '-u', '-n', '--clone', '-P', '-m', '-x');
 		return &choose_block_device($prompt, $except);
 	}
 }
@@ -471,6 +473,11 @@ sub clone_from_tails {
 sub main {
 	&parse_options;
 	&graphic_window_init;
+	
+	if(-x $v1_tails_installer) {
+		# handle different locations of the tails installer
+		$tails_installer = $v1_tails_installer
+	}
 	
 	if($CMD_OPTIONS{'help'}) {
 		&option_help;
