@@ -122,11 +122,14 @@ void do_copy(std::string source_location, std::string block_device, std::string 
 	}
 	if(_DEBUG) std::cerr << "Crypted volume mounted on " << mount_point << "\n";
 
-	// run rsync to copy files. Note that --delete does NOT delete
-	// --exclude'd files on the target.
-	std::cout << "Copying files...";
-	system((_STR + "/usr/bin/rsync -a --delete --exclude=gnupg/random_seed --exclude=lost+found " + source_location + "/ " + mount_point).c_str());
-	std::cout << "done\n";
+	// if we are told to copy nothing, skip the rsync
+	if(source_location.compare("")!=0) {
+		// run rsync to copy files. Note that --delete does NOT delete
+		// --exclude'd files on the target.
+		std::cout << "Copying files...";
+		system((_STR + "/usr/bin/rsync -a --delete --exclude=gnupg/random_seed --exclude=lost+found " + source_location + "/ " + mount_point).c_str());
+		std::cout << "done\n";
+	}
 	
 	// ensure correct permissions on the root of the persistent disk
 	// after rsync mucks them about - otherwise tails will barf. See
