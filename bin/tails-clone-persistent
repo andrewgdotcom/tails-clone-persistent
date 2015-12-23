@@ -29,7 +29,7 @@ my $persist_location = '/live/persistence/TailsData_unlocked/';
 my $helper_utility = '/usr/sbin/tcp-helper';
 
 # for tails v2.x
-my $tails_installer = '/usr/share/tails-installer';
+my $tails_installer = '/usr/lib/tails_installer/tails-installer';
 
 # for tails v1.x
 my $v1_tails_installer = '/usr/bin/liveusb-creator';
