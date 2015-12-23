@@ -72,8 +72,8 @@ It takes the following options:
 ################################
 
 
-# Need global access to window, hboxes to toggle visibility
-my ($graphic_window, $working_hbox, $pass_hbox, $pass_confirm_hbox, $chooser_hbox, $button_hbox);
+# Need global access to window, hboxes, buttons to toggle visibility
+my ($graphic_window, $working_hbox, $pass_hbox, $pass_confirm_hbox, $chooser_hbox, $button_hbox, $quit_button, $continue_button);
 
 # Need global access to particular widgets to read and write contents
 my ($working_label, $pass_entry, $pass_confirm_entry, $chooser);
@@ -139,10 +139,10 @@ sub graphic_window_init() {
 
 	$button_hbox = Gtk2::HBox->new;
 	
-	my $quit_button = Gtk2::Button->new_with_mnemonic('_Quit');
+	$quit_button = Gtk2::Button->new_with_mnemonic('_Quit');
 	$quit_button->signal_connect('clicked'=> sub{$event_outcome=0; Gtk2->main_quit});
 
-	my $continue_button = Gtk2::Button->new_with_mnemonic('_Continue');
+	$continue_button = Gtk2::Button->new_with_mnemonic('_Continue');
 	$continue_button->signal_connect('clicked'=> sub{$event_outcome=1; Gtk2->main_quit});
 
 	$button_hbox->pack_end($continue_button, 0,0,5);
@@ -168,6 +168,7 @@ sub secure_input() {
 	$pass_hbox->show;
 	$pass_confirm_hbox->hide;
 	$chooser_hbox->hide;
+	$button_hbox->show_all;
 	
 	$event_outcome=0;
 	$graphic_window->show;
@@ -201,6 +202,7 @@ non-alphanumeric character, such as punctuation.
 		$pass_hbox->show;
 		$pass_confirm_hbox->show;
 		$chooser_hbox->hide;
+		$button_hbox->show_all;
 
 		$graphic_window->show;
 		Gtk2->main;
@@ -253,6 +255,7 @@ sub make_submenu() {
 	$pass_hbox->hide;
 	$pass_confirm_hbox->hide;
 	$chooser_hbox->show;
+	$button_hbox->show_all;
 	
 	$event_outcome=0;
 	$graphic_window->show;
@@ -275,6 +278,7 @@ sub make_confirm() {
 	$pass_hbox->hide;
 	$pass_confirm_hbox->hide;
 	$chooser_hbox->hide;
+	$button_hbox->show_all;
 	
 	$event_outcome=0;
 	$graphic_window->show;
@@ -283,6 +287,42 @@ sub make_confirm() {
 	return $event_outcome;
 }
 
+sub make_success() {
+	my $prompt = shift;
+	my $input='';
+	$working_label->set_text($prompt);
+	
+	$working_hbox->show;
+	$pass_hbox->hide;
+	$pass_confirm_hbox->hide;
+	$chooser_hbox->hide;
+	$button_hbox->show_all;
+	$continue_button->hide;
+	
+	$event_outcome=0;
+	$graphic_window->show;
+	Gtk2->main;
+	
+	return $event_outcome;
+}
+
+sub make_progress() {
+	my $prompt = shift;
+	my $input='';
+	$working_label->set_text($prompt);
+	
+	$working_hbox->show;
+	$pass_hbox->hide;
+	$pass_confirm_hbox->hide;
+	$chooser_hbox->hide;
+	$button_hbox->hide;
+	
+	$graphic_window->show;
+	
+	# return success immediately so we can keep doing stuff
+	
+	return 1;
+}
 
 
 #################################
@@ -365,7 +405,7 @@ sub clone_to_tails() {
 	
 	# sanitise input
 	die "found unsafe characters in source location" unless 
-		$source_location_unsafe =~ m!^([[:alnum:][:digit:]/_.,+=-]+)$!;
+		$source_location_unsafe =~ m!^([[:alnum:][:digit:]/_.,+=-]*)$!;
 	my $source_location = $1;
 	
 	die "could not determine running Tails partition" unless $tails_partition;
@@ -388,6 +428,7 @@ sub clone_to_tails() {
 	}
 	
 	# Now call expect to handle the setuid helper
+	&make_progress('Copying data...');
 	
 	$ENV{'TCP_HELPER_DEBUG'}='1' if $CMD_OPTIONS{'debug'};
 	my $exp = Expect->spawn($helper_utility, $source_location, $block_device, $partition_state);
@@ -416,6 +457,8 @@ sub clone_to_tails() {
 			exp_continue;
 		}]
 	);
+	
+	&make_success('Copy complete');
 }
 
 
@@ -474,7 +517,7 @@ sub main {
 		}
 		&clone_from_tails;
 	} elsif($CMD_OPTIONS{'skel'}) {
-		die "--skel requires a non-zero argument\n" if $CMD_OPTIONS{'skel'} eq "";
+#		die "--skel requires a non-zero argument\n" if $CMD_OPTIONS{'skel'} eq "";
 		&clone_to_tails($CMD_OPTIONS{'skel'});
 	} else {
 		&clone_to_tails($persist_location);
