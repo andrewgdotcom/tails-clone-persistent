@@ -96,6 +96,7 @@ std::string mount_device(std::string device) {
 }
 
 void do_copy(std::string source_location, std::string block_device, std::string mode) {
+	int err;
 	std::string partition = block_device + "2";
 
 	if(mode.compare("--existing")==0) {
@@ -134,13 +135,18 @@ void do_copy(std::string source_location, std::string block_device, std::string 
 	// ensure correct permissions on the root of the persistent disk
 	// after rsync mucks them about - otherwise tails will barf. See
 	// https://tails.boum.org/contribute/design/persistence/#security
-	int err = chmod(mount_point.c_str(), 0775);
+	err = chmod(mount_point.c_str(), 0775);
 	if(err != 0){
 		std::cerr << "Could not set permissions on " << mount_point << "\n";
-		std::cerr << "Disk is still mounted\n";
+		system((_STR + "/usr/bin/udisks --unmount /dev/mapper/TailsData_target").c_str());
 		exit(1);
 	}
-	system((_STR + "/usr/bin/setfacl -m user:tails-persistence-setup:rwx " + mount_point).c_str());
+	err = system((_STR + "/usr/bin/setfacl -m user:tails-persistence-setup:rwx " + mount_point).c_str());
+	if(err != 0){
+		std::cerr << "Could not set ACLs on " << mount_point << "\n";
+		system((_STR + "/usr/bin/udisks --unmount /dev/mapper/TailsData_target").c_str());
+		exit(1);
+	}
 
 	system((_STR + "/usr/bin/udisks --unmount /dev/mapper/TailsData_target").c_str());
 	do {
