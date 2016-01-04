@@ -20,7 +20,8 @@ int _DEBUG;
 
 // parted cannot automatically find the beginning of free space, so we
 // have to do it ourselves
-std::string tails_free_start(std::string block_device) {
+std::string tails_free_start(std::string block_device, int &persistent_partition_exists) {
+	persistent_partition_exists=0;
 	
 	FILE *pipe = popen((_STR + 
 		"/sbin/parted " + block_device + " p").c_str(), "r");
@@ -57,8 +58,13 @@ std::string tails_free_start(std::string block_device) {
 				// sanity check that no more partitions exist
 				if(fgets(line, 1000, pipe)) {
 					if(strlen(line) > 3) {
-						std::cerr << "Found too many partitions!\n";
-						buffer[0]='\0';
+						persistent_partition_exists=1;
+						if(fgets(line, 1000, pipe)) {
+							if(strlen(line) > 3) {
+								std::cerr << "Found too many partitions!\n";
+								buffer[0]='\0';
+							}
+						}
 					}
 				}
 			}
@@ -106,7 +112,8 @@ void do_copy(std::string source_location, std::string block_device, std::string 
 
 	} else if(mode.compare("new")==0 || mode.compare("deniable")==0) {
 
-		std::string start = tails_free_start(block_device);
+		int persistent_partition_exists;
+		std::string start = tails_free_start(block_device, persistent_partition_exists);
 		if(start.compare("")==0) {
 			std::cerr << "Could not detect start of free space\n";
 			exit(1);
@@ -115,11 +122,10 @@ void do_copy(std::string source_location, std::string block_device, std::string 
 		
 		// if >2 partitions, tails_free_start would have aborted above
 		// so safe to assume we need to trash one partition at most
-		
-		// delete partition 2; if no partition 2 just ignore the error
-		system((_STR + "/sbin/parted -s " + block_device + " rm 2").c_str());
-		// now carry on as before
-		
+		if(persistent_partition_exists) {
+			system((_STR + "/sbin/parted -s " + block_device + " rm 2").c_str());
+		}
+
 		system((_STR + "/sbin/parted -s " + block_device + " mkpart primary " + start + " 100%").c_str());
 		system((_STR + "/sbin/parted -s " + block_device + " name 2 TailsData").c_str());
 		system((_STR + "/sbin/cryptsetup luksFormat " + partition).c_str());
