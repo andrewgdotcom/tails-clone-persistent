@@ -99,16 +99,27 @@ void do_copy(std::string source_location, std::string block_device, std::string 
 	int err;
 	std::string partition = block_device + "2";
 
-	if(mode.compare("--existing")==0) {
+	if(mode.compare("existing")==0) {
+		
 		std::cout << "Using existing partition\n";
 		system((_STR + "/sbin/cryptsetup luksOpen " + partition + " TailsData_target").c_str());
-	} else if(mode.compare("--new")==0) {
+
+	} else if(mode.compare("new")==0 || mode.compare("deniable")==0) {
+
 		std::string start = tails_free_start(block_device);
 		if(start.compare("")==0) {
 			std::cerr << "Could not detect start of free space\n";
 			exit(1);
 		}
 		std::cout << "Creating new partition\n";
+		
+		// if >2 partitions, tails_free_start would have aborted above
+		// so safe to assume we need to trash one partition at most
+		
+		// delete partition 2; if no partition 2 just ignore the error
+		system((_STR + "/sbin/parted -s " + block_device + " rm 2").c_str());
+		// now carry on as before
+		
 		system((_STR + "/sbin/parted -s " + block_device + " mkpart primary " + start + " 100%").c_str());
 		system((_STR + "/sbin/parted -s " + block_device + " name 2 TailsData").c_str());
 		system((_STR + "/sbin/cryptsetup luksFormat " + partition).c_str());
@@ -159,8 +170,12 @@ int main(int ARGC, char **ARGV) {
 	if(getenv("TCP_HELPER_DEBUG")) {
 		_DEBUG=1;
 	}
-	if(ARGC != 4 || !(!strcmp(ARGV[3], "--existing") || !strcmp(ARGV[3], "--new")) ){
-		std::cerr << "Usage: " << ARGV[0] << " SOURCE_DIR BLOCK_DEVICE (--existing|--new)\n";
+	if(ARGC != 4 || (
+			strcmp(ARGV[3], "existing") && 
+			strcmp(ARGV[3], "new") && 
+			strcmp(ARGV[3], "deniable") )){
+		std::cerr << "Usage: " << ARGV[0] << 
+			" SOURCE_DIR BLOCK_DEVICE (existing|new|deniable)\n";
 		exit(-1);
 	} else {
 		if(_DEBUG) std::cerr << "Args: " << std::string(ARGV[1]) <<" "<< std::string(ARGV[2]) <<" "<< std::string(ARGV[3]) << "\n";
