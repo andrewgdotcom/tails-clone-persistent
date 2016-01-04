@@ -306,6 +306,12 @@ sub make_success() {
 	return $event_outcome;
 }
 
+sub make_failure() {
+	# failure is so near to success ;-)
+	&make_success(shift);
+	die;
+}
+
 sub make_progress() {
 	my $prompt = shift;
 	my $input='';
@@ -332,7 +338,8 @@ sub get_tails_partition {
 	my $tails_partition;
 	my $pipe;
 	
-	open($pipe, '/bin/mount|') or die "failed to check mounts\n";
+	open($pipe, '/bin/mount|') 
+		or &make_failure("Failed to read mount points. Aborting.");
 	while(<$pipe>) {
 		print $_ if $CMD_OPTIONS{'debug'};
 		if(m!^([/[:alnum:]._-]+) on /lib/live/mount/medium type vfat!) {
@@ -382,7 +389,7 @@ sub mount_device {
 	
 	print qq[Mounting crypted partition...\n] if $CMD_OPTIONS{'debug'};
 	open($pipe, "/usr/bin/udisks --mount ${block_device}|")
-		or die "could not mount disk $block_device\n";
+		or &make_failure("Could not mount disk ${block_device}. Aborting.");
 	while(<$pipe>) {
 		print $_ if $CMD_OPTIONS{'debug'};
 		if(m!^Mounted \S+ at ([/[:alnum:]._-]+)!) {
@@ -404,11 +411,11 @@ sub clone_to_tails() {
 	my ($partition_state, $passphrase);
 	
 	# sanitise input
-	die "found unsafe characters in source location" unless 
+	&make_failure("Unsafe characters in source path. Aborting.") unless 
 		$source_location_unsafe =~ m!^([[:alnum:][:digit:]/_.,+=-]*)$!;
 	my $source_location = $1;
 	
-	die "could not determine running Tails partition" unless $tails_partition;
+	&make_failure("Could not determine running Tails partition. Aborting.") unless $tails_partition;
 	print "Tails volume found on $tails_partition\n" if $CMD_OPTIONS{'debug'};
 
 	my $block_device = &choose_block_device('SELECT TAILS DISK TO COPY TO', $tails_partition);
@@ -432,10 +439,7 @@ sub clone_to_tails() {
 	
 	$ENV{'TCP_HELPER_DEBUG'}='1' if $CMD_OPTIONS{'debug'};
 	my $exp = Expect->spawn($helper_utility, $source_location, $block_device, $partition_state);
-	unless($exp) {
-		&make_success("Could not run ${helper_utility}");
-		die;
-	}
+	&make_failure("Could not run ${helper_utility}. Aborting.") unless $exp;
 
 	if($CMD_OPTIONS{'debug'}) {
 		$exp->exp_internal(1);
@@ -445,36 +449,28 @@ sub clone_to_tails() {
 	
 	$exp->expect($expect_timeout, [
 		"Cannot exec", sub{
-			&make_success("Could not run ${helper_utility}. Aborting");
-			die;
+			&make_failure("Could not run ${helper_utility}. Aborting.");
 		}], [
 		"Usage: ${helper_utility}", sub{
-			&make_success("Could not run ${helper_utility}. Aborting");
-			die;
+			&make_failure("Could not run ${helper_utility}. Aborting.");
 		}], [
 		"Found too many partitions!", sub{
-			&make_success("Doesn't look like a Tails drive. Aborting.");
-			die;
+			&make_failure("Doesn't look like a Tails drive. Aborting.");
 		}], [
 		"Could not mount crypted volume", sub{
-			&make_success("Could not mount crypted partition. Aborting.");
-			die;
+			&make_failure("Could not mount crypted partition. Aborting.");
 		}], [
 		"Could not detect start of free space", sub{
-			&make_success("Could not detect start of free space. Aborting.");
-			die;
+			&make_failure("Could not detect start of free space. Aborting.");
 		}], [
 		"Unsafe characters detected in filename", sub{
-			&make_success("Unsafe characters in source path. Aborting.");
-			die;
+			&make_failure("Unsafe characters in source path. Aborting.");
 		}], [
 		"Could not set permissions on", sub{
-			&make_success("Could not set permissions on target drive. Aborting.");
-			die;
+			&make_failure("Could not set permissions on target drive. Aborting.");
 		}], [
 		"Could not set ACLs on", sub{
-			&make_success("Could not set ACLs on target drive. Aborting.");
-			die;
+			&make_failure("Could not set ACLs on target drive. Aborting.");
 		}], [
 		"Mounting crypted partition", sub{
 			&make_progress('Mounting crypted partition...');
@@ -511,7 +507,7 @@ sub clone_to_tails() {
 
 sub clone_from_tails {	
 	my $tails_partition = &get_tails_partition();
-	die "could not determine running Tails partition" unless $tails_partition;
+	&make_failure("Could not determine running Tails partition. Aborting.") unless $tails_partition;
 	print "Tails volume found on $tails_partition\n" if $CMD_OPTIONS{'debug'};
 
 	my $block_device = &choose_block_device('SELECT TAILS DISK TO COPY FROM', $tails_partition);
@@ -528,7 +524,7 @@ sub clone_from_tails {
 	#will prompt for a password
 	
 	my $mount_point = &mount_device('/dev/mapper/TailsData_source');
-	die "could not mount disk\n" unless $mount_point;
+	&make_failure("Could not mount disk") unless $mount_point;
 	print "Crypted volume mounted on $mount_point\n" if $CMD_OPTIONS{'debug'};
 
 	print qq[Copying files...];
@@ -538,9 +534,9 @@ sub clone_from_tails {
 
 	system('/usr/bin/udisks', '--unmount', '/dev/mapper/TailsData_source');
 	do {
-		print qq[Attempting to stop device (waiting for buffers to flush)\n];
+		&make_progress('Flushing data to disk...');
 	} until system('/sbin/cryptsetup', 'luksClose', 'TailsData_source')==0;
-	print qq[Copy complete\n];
+	&make_progress('Copy complete');
 }
 
 
@@ -552,7 +548,7 @@ sub main {
 	&graphic_window_init;
 	
 	if(-x $v1_tails_installer) {
-		# handle different locations of the tails installer
+		# handle changing locations/names of the tails installer
 		$tails_installer = $v1_tails_installer
 	}
 	
@@ -560,11 +556,10 @@ sub main {
 		&option_help;
 	} elsif($CMD_OPTIONS{'pull'}) {
 		if($> != 0) {
-			die "only root can overwrite running config; try again using sudo";
+			&make_failure("Only root can overwrite running config; try again using sudo.");
 		}
 		&clone_from_tails;
 	} elsif($CMD_OPTIONS{'skel'}) {
-#		die "--skel requires a non-zero argument\n" if $CMD_OPTIONS{'skel'} eq "";
 		&clone_to_tails($CMD_OPTIONS{'skel'});
 	} else {
 		&clone_to_tails($persist_location);
