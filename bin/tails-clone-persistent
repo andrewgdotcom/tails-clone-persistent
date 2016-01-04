@@ -73,7 +73,15 @@ It takes the following options:
 
 
 # Need global access to window, hboxes, buttons to toggle visibility
-my ($graphic_window, $working_hbox, $pass_hbox, $pass_confirm_hbox, $chooser_hbox, $button_hbox, $quit_button, $continue_button);
+my ($graphic_window, 
+	$working_hbox, 
+	$pass_hbox, 
+	$pass_confirm_hbox, 
+	$chooser_hbox, 
+	$reuse_hbox, 
+	$button_hbox, 
+	$quit_button, 
+	$continue_button);
 
 # Need global access to particular widgets to read and write contents
 my ($working_label, $pass_entry, $pass_confirm_entry, $chooser);
@@ -135,6 +143,20 @@ sub graphic_window_init() {
 	$chooser_hbox->pack_start($chooser, 1,1,5);
 	$vbox->pack_start($chooser_hbox, 0,0,5);
 
+	# Reuse or overwrite
+
+	$reuse_hbox = Gtk2::HBox->new;
+
+	my $trash_button = Gtk2::Button->new_with_mnemonic('_Delete and recreate');
+	$trash_button->signal_connect('clicked'=> sub{$event_outcome=0; Gtk2->main_quit});
+
+	my $reuse_button = Gtk2::Button->new_with_mnemonic('_Reuse existing');
+	$reuse_button->signal_connect('clicked'=> sub{$event_outcome=1; Gtk2->main_quit});
+
+	$reuse_hbox->pack_start($trash_button, 0,0,5);
+	$reuse_hbox->pack_end($reuse_button, 0,0,5);
+	$vbox->pack_start($reuse_hbox, 0,0,5);
+
 	# Quit and Continue buttons. We'll reuse these as much as we can.
 
 	$button_hbox = Gtk2::HBox->new;
@@ -168,6 +190,7 @@ sub secure_input() {
 	$pass_hbox->show;
 	$pass_confirm_hbox->hide;
 	$chooser_hbox->hide;
+	$reuse_hbox->hide;
 	$button_hbox->show_all;
 	
 	$event_outcome=0;
@@ -186,11 +209,10 @@ sub secure_input() {
 
 sub ask_passphrase() {
 	$working_label->set_text(
-	q[A passphrase will be used to encrypt your persistent data.
+	q[A passphrase will be used to encrypt your new persistent partition.
 
 The passphrase should contain at least 16 characters, and at least one 
 non-alphanumeric character, such as punctuation.
-
 ]);
 	my ($passphrase, $confirm, $success);
 	
@@ -202,6 +224,7 @@ non-alphanumeric character, such as punctuation.
 		$pass_hbox->show;
 		$pass_confirm_hbox->show;
 		$chooser_hbox->hide;
+		$reuse_hbox->hide;
 		$button_hbox->show_all;
 
 		$graphic_window->show;
@@ -221,7 +244,6 @@ non-alphanumeric character, such as punctuation.
 			
 The passphrase should contain at least 16 characters, and at least one 
 non-alphanumeric character, such as punctuation.
-
 ]) ;
 		} elsif($passphrase ne $confirm) {
 			$working_label->set_text(
@@ -229,7 +251,6 @@ non-alphanumeric character, such as punctuation.
 
 The passphrase should contain at least 16 characters, and at least one 
 non-alphanumeric character, such as punctuation.
-
 ]);
 		} else {
 			$success=1;
@@ -255,6 +276,7 @@ sub make_submenu() {
 	$pass_hbox->hide;
 	$pass_confirm_hbox->hide;
 	$chooser_hbox->show;
+	$reuse_hbox->hide;
 	$button_hbox->show_all;
 	
 	$event_outcome=0;
@@ -278,7 +300,27 @@ sub make_confirm() {
 	$pass_hbox->hide;
 	$pass_confirm_hbox->hide;
 	$chooser_hbox->hide;
+	$reuse_hbox->hide;
 	$button_hbox->show_all;
+	
+	$event_outcome=0;
+	$graphic_window->show;
+	Gtk2->main;
+	
+	return $event_outcome;
+}
+
+sub make_reuse() {
+	my $prompt = shift;
+	my $input='';
+	$working_label->set_text($prompt);
+	
+	$working_hbox->show;
+	$pass_hbox->hide;
+	$pass_confirm_hbox->hide;
+	$chooser_hbox->hide;
+	$reuse_hbox->show_all;
+	$button_hbox->hide;
 	
 	$event_outcome=0;
 	$graphic_window->show;
@@ -296,6 +338,7 @@ sub make_success() {
 	$pass_hbox->hide;
 	$pass_confirm_hbox->hide;
 	$chooser_hbox->hide;
+	$reuse_hbox->hide;
 	$button_hbox->show_all;
 	$continue_button->hide;
 	
@@ -321,6 +364,7 @@ sub make_progress() {
 	$pass_hbox->hide;
 	$pass_confirm_hbox->hide;
 	$chooser_hbox->hide;
+	$reuse_hbox->hide;
 	$button_hbox->hide;
 	
 	$graphic_window->show;
@@ -427,17 +471,28 @@ sub clone_to_tails() {
 	my $block_device = &choose_block_device('SELECT TAILS DISK TO COPY TO', $tails_partition);
 	return unless $block_device;
 	
-	# farm out real work to setuid helper
+	# if a persistent partition already exists on the target drive
 	if(-b "${block_device}2") {
-		return unless &make_confirm("Overwrite the existing persistent partition on ${block_device}?");
+		return unless &make_confirm("Update the existing persistent data on ${block_device}?");
 
-		$passphrase = &secure_input('Please unlock the target partition');
-		
-		$partition_mode='existing';
-	} else {
-		$passphrase = &ask_passphrase;
+		my $reuse = &make_reuse(
+q[If you know the passphrase of the target partition, you can reuse it. 
+This is faster, and could (slightly) extend the life of your disk.
 
+Otherwise, you should delete it and make one with a new passphrase.
+]);
+
+		if($reuse){
+			$partition_mode='existing';
+			$passphrase = &secure_input('Please unlock the target disk');
+		}
+	} 
+	
+	# if no passphrase given (incl. if there was no existing partition)
+	unless($passphrase) {
 		$partition_mode='new';
+		$passphrase = &ask_passphrase;
+		return unless $passphrase;
 	}
 	
 	# Now call expect to handle the setuid helper
