@@ -414,7 +414,7 @@ sub mount_device {
 sub clone_to_tails() {	
 	my $source_location_unsafe = shift;
 	my $tails_partition = &get_tails_partition();
-	my ($partition_state, $passphrase);
+	my ($partition_mode, $passphrase);
 	
 	# sanitise input
 	&make_failure("Unsafe characters in source path. Aborting.") unless 
@@ -433,18 +433,18 @@ sub clone_to_tails() {
 
 		$passphrase = &secure_input('Please unlock the target partition');
 		
-		$partition_state='--existing';
+		$partition_mode='existing';
 	} else {
 		$passphrase = &ask_passphrase;
 
-		$partition_state='--new';
+		$partition_mode='new';
 	}
 	
 	# Now call expect to handle the setuid helper
 	&make_progress('Copying data...');
 	
 	$ENV{'TCP_HELPER_DEBUG'}='1' if $CMD_OPTIONS{'debug'};
-	my $exp = Expect->spawn($helper_utility, $source_location, $block_device, $partition_state);
+	my $exp = Expect->spawn($helper_utility, $source_location, $block_device, $partition_mode);
 	&make_failure("Could not run ${helper_utility}. Aborting.") unless $exp;
 
 	if($CMD_OPTIONS{'debug'}) {
