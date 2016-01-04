@@ -325,9 +325,15 @@ sub make_progress() {
 	
 	$graphic_window->show;
 	
-	# return success immediately so we can keep doing stuff
-	
-	return 1;
+	if($CMD_OPTIONS{'debug'}) {
+		# wait for the user to press continue
+		$button_hbox->show_all;
+		$quit_button->hide;
+		Gtk2->main;
+	} else {
+		# return success immediately so we can keep doing stuff
+		return 1;
+	}
 }
 
 
