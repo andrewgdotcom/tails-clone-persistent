@@ -431,7 +431,7 @@ sub clone_to_tails() {
 	if(-b "${block_device}2") {
 		return unless &make_confirm("Overwrite the existing persistent partition on ${block_device}?");
 
-		$passphrase = &secure_input('Please enter the passphrase for the existing persistent partition');
+		$passphrase = &secure_input('Please unlock the target partition');
 		
 		$partition_state='--existing';
 	} else {
