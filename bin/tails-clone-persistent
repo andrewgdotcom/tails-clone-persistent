@@ -438,7 +438,7 @@ sub mount_device {
 	my $pipe;
 	
 	print qq[Mounting crypted partition...\n] if $CMD_OPTIONS{'debug'};
-	open($pipe, "/usr/bin/udisksctl mount ${block_device}|")
+	open($pipe, "/usr/bin/udisksctl mount --block-device ${block_device}|")
 		or &make_failure("Could not mount disk ${block_device}. Aborting.");
 	while(<$pipe>) {
 		print $_ if $CMD_OPTIONS{'debug'};
@@ -593,7 +593,7 @@ sub clone_from_tails {
 		"${mount_point}/", $persist_location);
 	print qq[done\n];
 
-	system('/usr/bin/udisksctl', 'unmount', '/dev/mapper/TailsData_source');
+	system('/usr/bin/udisksctl', 'unmount', '--block-device', '/dev/mapper/TailsData_source');
 	do {
 		&make_progress('Flushing data to disk...');
 	} until system('/sbin/cryptsetup', 'luksClose', 'TailsData_source')==0;
