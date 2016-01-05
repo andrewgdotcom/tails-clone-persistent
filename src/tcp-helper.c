@@ -136,7 +136,10 @@ void do_copy(std::string source_location, std::string block_device, std::string 
 		// so safe to assume we need to trash one partition at most
 		if(persistent_partition_exists) {
 			if(_DEBUG) std::cerr << "Deleting old second partition\n";
-			system((_STR + "/sbin/parted -s " + block_device + " rm 2").c_str());
+			if(!system((_STR + "/sbin/parted -s " + block_device + " rm 2").c_str() )) {
+				std::cerr << "Could not delete old persistent partition\n";
+				exit(1);
+			}
 		}
 
 		if(_DEBUG) std::cerr << "Making new secondary partition\n";

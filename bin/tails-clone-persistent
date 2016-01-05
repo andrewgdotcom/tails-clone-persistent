@@ -563,6 +563,9 @@ Otherwise, you should delete it and make one with a new passphrase.
 		"Could not randomise free space on new crypted volume", sub{
 			&make_failure("Could not randomise free space on new crypted volume. Aborting.");
 		}], [
+		"Could not delete old persistent partition", sub{
+			&make_failure("Could not delete old persistent partition. Aborting.");
+		}], [
 #		"Mounting crypted partition", sub{
 #			&make_progress('Mounting crypted partition...');
 #		}], [
