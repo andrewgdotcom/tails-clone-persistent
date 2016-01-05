@@ -521,8 +521,8 @@ Otherwise, you should delete it and make one with a new passphrase.
 		"Could not mount crypted volume", sub{
 			&make_failure("Could not mount crypted partition. Aborting.");
 		}], [
-		"Could not detect start of free space", sub{
-			&make_failure("Could not detect start of free space. Aborting.");
+		"Could not detect end of tails primary partition", sub{
+			&make_failure("Could not detect end of tails primary partition. Aborting.");
 		}], [
 		"Unsafe characters detected in filename", sub{
 			&make_failure("Unsafe characters in source path. Aborting.");

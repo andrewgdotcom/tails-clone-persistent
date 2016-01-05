@@ -96,7 +96,21 @@ std::string mount_device(std::string device) {
 		}
 	}
 	fclose(pipe);
+	
+	// Test to see if udisksctl has appended a full stop to the output
+	// and delete it. Some versions do, some don't.
+	if(*(mount_point.back())=='.') {
+		if(_DEBUG) std::cerr << "Truncating trailing punctuation\n";
+		mount_point.pop_back();
+	}
 	return(mount_point);
+}
+
+void luks_close_and_spinlock(std::string block_device) {
+	// use this to make sure all data is flushed and cryption stopped
+	do {
+		std::cout << "Attempting to stop device (waiting for buffers to flush)\n";
+	} while( system((_STR + "/sbin/cryptsetup luksClose " + block_device).c_str()) );
 }
 
 void do_copy(std::string source_location, std::string block_device, std::string mode) {
@@ -106,14 +120,13 @@ void do_copy(std::string source_location, std::string block_device, std::string 
 	if(mode.compare("existing")==0) {
 		
 		std::cout << "Using existing partition\n";
-		system((_STR + "/sbin/cryptsetup luksOpen " + partition + " TailsData_target").c_str());
 
 	} else if(mode.compare("new")==0 || mode.compare("deniable")==0) {
 
 		int persistent_partition_exists = 0;
 		std::string start = tails_free_start(block_device, &persistent_partition_exists);
 		if(start.compare("")==0) {
-			std::cerr << "Could not detect start of free space\n";
+			std::cerr << "Could not detect end of tails primary partition\n";
 			exit(1);
 		}
 		std::cout << "Creating new partition\n";
@@ -141,7 +154,13 @@ void do_copy(std::string source_location, std::string block_device, std::string 
 		// may not be worth the complexity for such a small benefit?
 		
 		system((_STR + "/sbin/mke2fs -j -t ext4 -L TailsData /dev/mapper/TailsData_target").c_str());
+		
+		// stop the luks device to force a flush on slow devices
+		luks_close_and_spinlock("/dev/mapper/TailsData_target");
 	}
+
+	// (re)open the crypted device
+	system((_STR + "/sbin/cryptsetup luksOpen " + partition + " TailsData_target").c_str());
 
 	std::string mount_point = mount_device("/dev/mapper/TailsData_target");
 	if(mount_point.compare("")==0) {
@@ -177,9 +196,7 @@ void do_copy(std::string source_location, std::string block_device, std::string 
 
 	system((_STR + "/usr/bin/udisksctl unmount --block-device /dev/mapper/TailsData_target").c_str());
 
-	do {
-		std::cout << "Attempting to stop device (waiting for buffers to flush)\n";
-	} while( system((_STR + "/sbin/cryptsetup luksClose TailsData_target").c_str()) );
+	luks_close_and_spinlock("/dev/mapper/TailsData_target");
 	std::cout << "Copy complete\n";
 }
 
