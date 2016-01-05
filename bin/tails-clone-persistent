@@ -560,6 +560,9 @@ Otherwise, you should delete it and make one with a new passphrase.
 		"Could not create filesystem on new crypted volume", sub{
 			&make_failure("Could not create filesystem on new crypted volume. Aborting.");
 		}], [
+		"Could not randomise free space on new crypted volume", sub{
+			&make_failure("Could not randomise free space on new crypted volume. Aborting.");
+		}], [
 #		"Mounting crypted partition", sub{
 #			&make_progress('Mounting crypted partition...');
 #		}], [
