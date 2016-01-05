@@ -38,7 +38,7 @@ std::string tails_free_start(std::string block_device, int *persistent_partition
 		if(_DEBUG) std::cerr << "Skipping line: " << line;
 	}
 
-	// find the location of the string "End\s+" in the line buffer
+	// find the location of /End .*(?=Size )/ in the line buffer
 	// if this succeeds, then overwrite the line buffer with the next 
 	// line and copy out what falls in the same window
 	// this should be "2621MB\s+" or similar
