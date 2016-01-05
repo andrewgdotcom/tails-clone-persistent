@@ -135,13 +135,29 @@ void do_copy(std::string source_location, std::string block_device, std::string 
 		// if >2 partitions, tails_free_start would have aborted above
 		// so safe to assume we need to trash one partition at most
 		if(persistent_partition_exists) {
+			if(_DEBUG) std::cerr << "Deleting old second partition\n";
 			system((_STR + "/sbin/parted -s " + block_device + " rm 2").c_str());
 		}
 
-		system((_STR + "/sbin/parted -s " + block_device + " mkpart primary " + start + " 100%").c_str());
-		system((_STR + "/sbin/parted -s " + block_device + " name 2 TailsData").c_str());
-		system((_STR + "/sbin/cryptsetup luksFormat " + partition).c_str());
-		system((_STR + "/sbin/cryptsetup luksOpen " + partition + " TailsData_target").c_str());
+		if(_DEBUG) std::cerr << "Making new secondary partition\n";
+		if(!system((_STR + "/sbin/parted -s " + block_device + " mkpart primary " + start + " 100%").c_str() )) {
+			std::cerr << "Could not create new partition\n";
+		}
+
+		if(_DEBUG) std::cerr << "Renaming partition label\n";
+		if(!system((_STR + "/sbin/parted -s " + block_device + " name 2 TailsData").c_str() )) {
+			std::cerr << "Could not rename new partition\n";
+		}
+
+		if(_DEBUG) std::cerr << "Formatting new crypted volume\n";
+		if(!system((_STR + "/sbin/cryptsetup luksFormat " + partition).c_str() )) {
+			std::cerr << "Could not create crypted volume\n";
+		}
+
+		if(_DEBUG) std::cerr << "Unlocking new crypted volume\n";
+		if(!system((_STR + "/sbin/cryptsetup luksOpen " + partition + " TailsData_target").c_str() )) {
+			std::cerr << "Could not unlock new crypted volume\n";
+		}
 		
 		// plausible deniability
 		if(mode.compare("deniable")==0) {
@@ -154,14 +170,20 @@ void do_copy(std::string source_location, std::string block_device, std::string 
 		// some time off the process - this will need a new mode
 		// may not be worth the complexity for such a small benefit?
 		
-		system((_STR + "/sbin/mke2fs -j -t ext4 -L TailsData /dev/mapper/TailsData_target").c_str());
+		if(_DEBUG) std::cerr << "Creating filesystem\n";
+		if(!system((_STR + "/sbin/mke2fs -j -t ext4 -L TailsData /dev/mapper/TailsData_target").c_str() )) {
+			std::cerr << "Could not create filesystem on new crypted volume\n";
+		}
 		
 		// stop the luks device to force a flush on slow devices
 		luks_close_and_spinlock("/dev/mapper/TailsData_target");
 	}
 
 	// (re)open the crypted device
-	system((_STR + "/sbin/cryptsetup luksOpen " + partition + " TailsData_target").c_str());
+	if(!system((_STR + "/sbin/cryptsetup luksOpen " + partition + " TailsData_target").c_str())) {
+		std::cerr << "Could not unlock crypted volume\n";
+		exit(1);
+	}
 
 	std::string mount_point = mount_device("/dev/mapper/TailsData_target");
 	if(mount_point.compare("")==0) {

@@ -536,6 +536,30 @@ Otherwise, you should delete it and make one with a new passphrase.
 		"Device /dev/mapper/TailsData_target is not active", sub{
 			&make_failure("Tried to stop a stopped crypted partition! Aborting.");
 		}], [
+		"doesn't exist or access denied", sub{
+			&make_failure("Access failed on target partition. Aborting.");
+		}], [
+		"does not exist and no size was specified", sub{
+			&make_failure("Could not find crypted volume. Aborting.");
+		}], [
+		"Could not unlock crypted volume", sub{
+			&make_failure("Could not unlock crypted volume. Bad password? Aborting.");
+		}], [
+		"Could not unlock new crypted volume", sub{
+			&make_failure("Could not unlock crypted volume. This should never happen. Aborting.");
+		}], [
+		"Could not create new partition", sub{
+			&make_failure("Could not create new partition. Aborting.");
+		}], [
+		"Could not rename new partition", sub{
+			&make_failure("Could not rename new partition label. Aborting.");
+		}], [
+		"Could not create crypted volume", sub{
+			&make_failure("Could not create crypted volume. Aborting.");
+		}], [
+		"Could not create filesystem on new crypted volume", sub{
+			&make_failure("Could not create filesystem on new crypted volume. Aborting.");
+		}], [
 #		"Mounting crypted partition", sub{
 #			&make_progress('Mounting crypted partition...');
 #		}], [
