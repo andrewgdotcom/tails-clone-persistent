@@ -356,7 +356,6 @@ sub make_failure() {
 }
 
 sub make_progress() {
-	return; #debugging
 	my $prompt = shift;
 	my $input='';
 	$working_label->set_text($prompt);
@@ -534,24 +533,24 @@ Otherwise, you should delete it and make one with a new passphrase.
 		"Could not set ACLs on", sub{
 			&make_failure("Could not set ACLs on target drive. Aborting.");
 		}], [
-		"Mounting crypted partition", sub{
-			&make_progress('Mounting crypted partition...');
-		}], [
-		"Creating new partition", sub{
-			&make_progress('Creating new crypted partition...');
-		}], [
-		"Using existing partition", sub{
-			&make_progress('Using existing crypted partition...');
-		}], [
-		"waiting for buffers to flush", sub{
-			&make_progress('Flushing data to disk...');
-		}], [
-		"plausible deniability", sub{
-			&make_progress('Randomising free space for plausible deniability (this may take some time)...');
-		}], [
-		"Copy complete", sub{
-			&make_progress('Copy complete');
-		}], [
+#		"Mounting crypted partition", sub{
+#			&make_progress('Mounting crypted partition...');
+#		}], [
+#		"Creating new partition", sub{
+#			&make_progress('Creating new crypted partition...');
+#		}], [
+#		"Using existing partition", sub{
+#			&make_progress('Using existing crypted partition...');
+#		}], [
+#		"waiting for buffers to flush", sub{
+#			&make_progress('Flushing data to disk...');
+#		}], [
+#		"plausible deniability", sub{
+#			&make_progress('Randomising free space for plausible deniability (this may take some time)...');
+#		}], [
+#		"Copy complete", sub{
+#			&make_progress('Copy complete');
+#		}], [
 		"Type uppercase yes", sub{
 			my $self=shift;
 			$self->send("YES\n");
