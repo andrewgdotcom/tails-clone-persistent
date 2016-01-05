@@ -20,8 +20,8 @@ int _DEBUG;
 
 // parted cannot automatically find the beginning of free space, so we
 // have to do it ourselves
-std::string tails_free_start(std::string block_device, int &persistent_partition_exists) {
-	persistent_partition_exists=0;
+std::string tails_free_start(std::string block_device, int *persistent_partition_exists) {
+	*persistent_partition_exists=0;
 	
 	FILE *pipe = popen((_STR + 
 		"/sbin/parted " + block_device + " p").c_str(), "r");
@@ -54,11 +54,11 @@ std::string tails_free_start(std::string block_device, int &persistent_partition
 				buffer[len]='\0';
 				
 				if(_DEBUG) std::cerr << "Got partition end location: " << buffer <<"\n";
-				
-				// sanity check that no more partitions exist
+				// check to see if a second partition exists
 				if(fgets(line, 1000, pipe)) {
 					if(strlen(line) > 3) {
-						persistent_partition_exists=1;
+						*persistent_partition_exists=1;
+						// sanity check that no more partitions exist
 						if(fgets(line, 1000, pipe)) {
 							if(strlen(line) > 3) {
 								std::cerr << "Found too many partitions!\n";
@@ -113,7 +113,7 @@ void do_copy(std::string source_location, std::string block_device, std::string 
 	} else if(mode.compare("new")==0 || mode.compare("deniable")==0) {
 
 		int persistent_partition_exists;
-		std::string start = tails_free_start(block_device, persistent_partition_exists);
+		std::string start = tails_free_start(block_device, &persistent_partition_exists);
 		if(start.compare("")==0) {
 			std::cerr << "Could not detect start of free space\n";
 			exit(1);
