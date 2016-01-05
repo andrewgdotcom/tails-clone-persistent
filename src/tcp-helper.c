@@ -166,6 +166,7 @@ void do_copy(std::string source_location, std::string block_device, std::string 
 	std::string mount_point = mount_device("/dev/mapper/TailsData_target");
 	if(mount_point.compare("")==0) {
 		std::cerr << "Could not mount crypted volume\n";
+		luks_close_and_spinlock("/dev/mapper/TailsData_target");
 		exit(1);
 	}
 	if(_DEBUG) std::cerr << "Crypted volume mounted on " << mount_point << "\n";
@@ -186,18 +187,20 @@ void do_copy(std::string source_location, std::string block_device, std::string 
 	if(err != 0){
 		std::cerr << "Could not set permissions on " << mount_point << "\n";
 		system((_STR + "/usr/bin/udisksctl unmount --force --block-device /dev/mapper/TailsData_target").c_str());
+		luks_close_and_spinlock("/dev/mapper/TailsData_target");
 		exit(1);
 	}
 	err = system((_STR + "/usr/bin/setfacl -m user:tails-persistence-setup:rwx " + mount_point).c_str());
 	if(err != 0){
 		std::cerr << "Could not set ACLs on " << mount_point << "\n";
 		system((_STR + "/usr/bin/udisksctl unmount --force --block-device /dev/mapper/TailsData_target").c_str());
+		luks_close_and_spinlock("/dev/mapper/TailsData_target");
 		exit(1);
 	}
 
 	system((_STR + "/usr/bin/udisksctl unmount --block-device /dev/mapper/TailsData_target").c_str());
-
 	luks_close_and_spinlock("/dev/mapper/TailsData_target");
+	
 	std::cout << "Copy complete\n";
 }
 
