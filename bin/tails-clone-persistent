@@ -533,6 +533,9 @@ Otherwise, you should delete it and make one with a new passphrase.
 		"Could not set ACLs on", sub{
 			&make_failure("Could not set ACLs on target drive. Aborting.");
 		}], [
+		"Device /dev/mapper/TailsData_target is not active", sub{
+			&make_failure("Tried to stop a stopped crypted partition! Aborting.");
+		}], [
 #		"Mounting crypted partition", sub{
 #			&make_progress('Mounting crypted partition...');
 #		}], [
