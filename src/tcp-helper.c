@@ -131,7 +131,7 @@ void do_copy(std::string source_location, std::string block_device, std::string 
 		
 		// plausible deniability
 		if(mode.compare("deniable")==0) {
-			std::cout << "Randomising free space for plausible deniability. This may take some time.";
+			std::cout << "Randomising free space for plausible deniability.";
 			system((_STR + "/bin/dd if=/dev/zero of=/dev/mapper/TailsData_target").c_str());	
 		}
 		
