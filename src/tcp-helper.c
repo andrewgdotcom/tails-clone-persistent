@@ -135,9 +135,14 @@ void do_copy(std::string source_location, std::string block_device, std::string 
 			system((_STR + "/bin/dd if=/dev/zero of=/dev/mapper/TailsData_target").c_str());	
 		}
 		
+		// if we're called for deniability purposes only, we _could_
+		// call luksClose right now and prematurely return(), shaving
+		// some time off the process - this will need a new mode
+		// may not be worth the complexity for such a small benefit?
+		
 		system((_STR + "/sbin/mke2fs -j -t ext4 -L TailsData /dev/mapper/TailsData_target").c_str());
 	}
-	
+
 	std::string mount_point = mount_device("/dev/mapper/TailsData_target");
 	if(mount_point.compare("")==0) {
 		std::cerr << "Could not mount crypted volume\n";
@@ -171,6 +176,7 @@ void do_copy(std::string source_location, std::string block_device, std::string 
 	}
 
 	system((_STR + "/usr/bin/udisksctl unmount --block-device /dev/mapper/TailsData_target").c_str());
+
 	do {
 		std::cout << "Attempting to stop device (waiting for buffers to flush)\n";
 	} while( system((_STR + "/sbin/cryptsetup luksClose TailsData_target").c_str()) );
