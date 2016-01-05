@@ -554,8 +554,8 @@ Otherwise, you should delete it and make one with a new passphrase.
 		"Could not rename new partition", sub{
 			&make_failure("Could not rename new partition label. Aborting.");
 		}], [
-		"Could not create crypted volume", sub{
-			&make_failure("Could not create crypted volume. Aborting.");
+		"Could not initialise crypted volume", sub{
+			&make_failure("Could not initialise crypted volume. Aborting.");
 		}], [
 		"Error syncing files", sub{
 			&make_failure("Error syncing files. Aborting.");

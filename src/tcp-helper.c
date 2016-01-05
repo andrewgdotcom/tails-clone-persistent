@@ -163,10 +163,10 @@ void do_copy(std::string source_location, std::string block_device, std::string 
 			exit(1);
 		}
 
-		if(_DEBUG) std::cerr << "Formatting new crypted volume\n";
+		if(_DEBUG) std::cerr << "Initialising new crypted volume\n";
 		err = system((_STR + "/sbin/cryptsetup luksFormat " + partition).c_str() );
 		if(err) {
-			std::cerr << "Could not create crypted volume\n" << "Error: " << err;
+			std::cerr << "Could not initialise crypted volume\n" << "Error: " << err;
 			exit(1);
 		}
 
@@ -232,6 +232,8 @@ void do_copy(std::string source_location, std::string block_device, std::string 
 			exit(1);
 		}
 		std::cout << "done\n";
+	} else {
+		std::cout << "Not copying any files, as requested";
 	}
 	
 	// ensure correct permissions on the root of the persistent disk
