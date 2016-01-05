@@ -128,6 +128,13 @@ void do_copy(std::string source_location, std::string block_device, std::string 
 		system((_STR + "/sbin/parted -s " + block_device + " name 2 TailsData").c_str());
 		system((_STR + "/sbin/cryptsetup luksFormat " + partition).c_str());
 		system((_STR + "/sbin/cryptsetup luksOpen " + partition + " TailsData_target").c_str());
+		
+		// plausible deniability
+		if(mode.compare("deniable")==0) {
+			std::cout << "Randomising disk for plausible deniability. This may take some time.";
+			system((_STR + "/bin/dd if=/dev/zero of=/dev/mapper/TailsData_target").c_str());	
+		}
+		
 		system((_STR + "/sbin/mke2fs -j -t ext4 -L TailsData /dev/mapper/TailsData_target").c_str());
 	}
 	

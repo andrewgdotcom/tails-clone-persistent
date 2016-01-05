@@ -545,6 +545,9 @@ Otherwise, you should delete it and make one with a new passphrase.
 		"waiting for buffers to flush", sub{
 			&make_progress('Flushing data to disk...');
 		}], [
+		"plausible deniability", sub{
+			&make_progress('Randomising disk for plausible deniability (this may take some time)...');
+		}], [
 		"Copy complete", sub{
 			&make_progress('Copy complete');
 		}], [
