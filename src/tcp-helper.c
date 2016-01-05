@@ -225,7 +225,12 @@ void do_copy(std::string source_location, std::string block_device, std::string 
 		// run rsync to copy files. Note that --delete does NOT delete
 		// --exclude'd files on the target.
 		std::cout << "Copying files...";
-		system((_STR + "/usr/bin/rsync -a --delete --exclude=gnupg/random_seed --exclude=lost+found " + source_location + "/ " + mount_point).c_str());
+		err = system((_STR + "/usr/bin/rsync -a --delete --exclude=gnupg/random_seed --exclude=lost+found " + source_location + "/ " + mount_point).c_str());
+		if(err) {
+			std::cerr << "Error syncing files\n" << "Error: " << err;
+			luks_close_and_spinlock("/dev/mapper/TailsData_target");
+			exit(1);
+		}
 		std::cout << "done\n";
 	}
 	

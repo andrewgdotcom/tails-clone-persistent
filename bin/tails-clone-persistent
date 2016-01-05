@@ -557,6 +557,9 @@ Otherwise, you should delete it and make one with a new passphrase.
 		"Could not create crypted volume", sub{
 			&make_failure("Could not create crypted volume. Aborting.");
 		}], [
+		"Error syncing files", sub{
+			&make_failure("Error syncing files. Aborting.");
+		}], [
 		"Could not create filesystem on new crypted volume", sub{
 			&make_failure("Could not create filesystem on new crypted volume. Aborting.");
 		}], [
