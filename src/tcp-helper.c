@@ -76,7 +76,7 @@ std::string tails_free_start(std::string block_device, int *persistent_partition
 }
 
 std::string mount_device(std::string device) {
-	std::string mount_point ("");
+	char *mount_point;
 	
 	std::cerr << "Mounting crypted partition...\n";
 	FILE *pipe = popen((_STR + "/usr/bin/udisksctl mount --block-device " + device).c_str(), "r");
@@ -92,6 +92,7 @@ std::string mount_device(std::string device) {
 			!strcmp(bit3=strtok_r(0, " ", &bookmark), "at")) {
 				mount_point = strtok_r(0, "\n", &bookmark);
 		} else {
+			// remind me again why this is here?
 			if(_DEBUG) std::cerr << "Parsed output: " << bit1 << "::"<<bit2<<"::"<<bit3<<"::"<<mount_point<<"\n";
 		}
 	}
@@ -99,11 +100,11 @@ std::string mount_device(std::string device) {
 	
 	// Test to see if udisksctl has appended a full stop to the output
 	// and delete it. Some versions do, some don't.
-	if(*(mount_point.back())=='.') {
+	if(mount_point[strlen(mount_point)-1]=='.') {
 		if(_DEBUG) std::cerr << "Truncating trailing punctuation\n";
-		mount_point.pop_back();
+		mount_point[strlen(mount_point)-1] = '\0';
 	}
-	return(mount_point);
+	return(_STR + mount_point);
 }
 
 void luks_close_and_spinlock(std::string block_device) {
