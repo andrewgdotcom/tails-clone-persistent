@@ -566,6 +566,9 @@ Otherwise, you should delete it and make one with a new passphrase.
 		"Could not delete old persistent partition", sub{
 			&make_failure("Could not delete old persistent partition. Aborting.");
 		}], [
+		"Failed to lock partition", sub{
+			&make_failure("Failed to lock partition. You may need to unmount manually. Aborting gracelessly!");
+		}], [
 #		"Mounting crypted partition", sub{
 #			&make_progress('Mounting crypted partition...');
 #		}], [
