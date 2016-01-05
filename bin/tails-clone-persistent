@@ -533,15 +533,15 @@ Otherwise, you should delete it and make one with a new passphrase.
 		"Could not set ACLs on", sub{
 			&make_failure("Could not set ACLs on target drive. Aborting.");
 		}], [
-		"Device /dev/mapper/TailsData_target is not active", sub{
-			&make_failure("Tried to stop a stopped crypted partition! Aborting.");
-		}], [
-		"doesn't exist or access denied", sub{
-			&make_failure("Access failed on target partition. Aborting.");
-		}], [
-		"does not exist and no size was specified", sub{
-			&make_failure("Could not find crypted volume. Aborting.");
-		}], [
+#		"Device /dev/mapper/TailsData_target is not active", sub{
+#			&make_failure("Tried to stop a stopped crypted partition! Aborting.");
+#		}], [
+#		"doesn't exist or access denied", sub{
+#			&make_failure("Access failed on target partition. Aborting.");
+#		}], [
+#		"does not exist and no size was specified", sub{
+#			&make_failure("Could not find crypted volume. Aborting.");
+#		}], [
 		"Could not unlock crypted volume", sub{
 			&make_failure("Could not unlock crypted volume. Bad password? Aborting.");
 		}], [
