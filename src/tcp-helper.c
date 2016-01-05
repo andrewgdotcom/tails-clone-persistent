@@ -179,8 +179,8 @@ void do_copy(std::string source_location, std::string block_device, std::string 
 		
 		// plausible deniability
 		if(mode.compare("deniable")==0) {
-			std::cout << "Randomising free space for plausible deniability.";
-			err = system((_STR + "/bin/dd if=/dev/zero of=/dev/mapper/TailsData_target").c_str() );
+			std::cout << "Randomising free space for plausible deniability.\n";
+			err = system((_STR + "/bin/dd if=/dev/zero of=/dev/mapper/TailsData_target bs=8192").c_str() );
 			if(err) {
 				std::cerr << "Could not randomise free space on new crypted volume\n" << "Error: " << err;
 				luks_close_and_spinlock("/dev/mapper/TailsData_target");
