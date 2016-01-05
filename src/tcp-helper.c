@@ -179,9 +179,12 @@ void do_copy(std::string source_location, std::string block_device, std::string 
 		
 		// plausible deniability
 		if(mode.compare("deniable")==0) {
-			std::cout << "Randomising free space for plausible deniability.\n";
+			std::cout << "Randomising free space for plausible deniability. This may take a while.\n";
+			// "a while" =~ 5-10 mins/GB on crappy hardware ;-)
+			
 			err = system((_STR + "/bin/dd if=/dev/zero of=/dev/mapper/TailsData_target bs=8192").c_str() );
-			if(err) {
+			if(err != 256) { 
+				// yes, we WANT to fail with "no space left on device"!
 				std::cerr << "Could not randomise free space on new crypted volume\n" << "Error: " << err;
 				luks_close_and_spinlock("/dev/mapper/TailsData_target");
 				exit(1);		
