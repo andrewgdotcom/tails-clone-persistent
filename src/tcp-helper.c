@@ -115,7 +115,7 @@ void luks_close_and_spinlock(std::string block_device) {
 		err = system((_STR + "/sbin/cryptsetup luksClose " + block_device).c_str());
 	} while( err == 5 );
 	if(err) {
-		std::cerr << "Failed to lock partition! PANIC!\n" << "Error: " << err;
+		std::cerr << "Failed to lock partition! PANIC!\nError: " << err << "\n";
 		exit(1);
 	}
 }
@@ -144,7 +144,7 @@ void do_copy(std::string source_location, std::string block_device, std::string 
 			if(_DEBUG) std::cerr << "Deleting old second partition\n";
 			err = system((_STR + "/sbin/parted -s " + block_device + " rm 2").c_str() );	
 			if(err) {
-				std::cerr << "Could not delete old persistent partition\n" << "Error: " << err;
+				std::cerr << "Could not delete old persistent partition\nError: " << err << "\n";
 				exit(1);
 			}
 		}
@@ -152,28 +152,28 @@ void do_copy(std::string source_location, std::string block_device, std::string 
 		if(_DEBUG) std::cerr << "Making new secondary partition\n";
 		err = system((_STR + "/sbin/parted -s " + block_device + " mkpart primary " + start + " 100%").c_str() );
 		if(err) {
-			std::cerr << "Could not create new partition\n" << "Error: " << err;
+			std::cerr << "Could not create new partition\nError: " << err << "\n";
 			exit(1);
 		}
 
 		if(_DEBUG) std::cerr << "Renaming partition label\n";
 		err = system((_STR + "/sbin/parted -s " + block_device + " name 2 TailsData").c_str() );
 		if(err) {
-			std::cerr << "Could not rename new partition\n" << "Error: " << err;
+			std::cerr << "Could not rename new partition\nError: " << err << "\n";
 			exit(1);
 		}
 
 		if(_DEBUG) std::cerr << "Initialising new crypted volume\n";
 		err = system((_STR + "/sbin/cryptsetup luksFormat " + partition).c_str() );
 		if(err) {
-			std::cerr << "Could not initialise crypted volume\n" << "Error: " << err;
+			std::cerr << "Could not initialise crypted volume\nError: " << err << "\n";
 			exit(1);
 		}
 
 		if(_DEBUG) std::cerr << "Unlocking new crypted volume\n";
 		err = system((_STR + "/sbin/cryptsetup luksOpen " + partition + " TailsData_target").c_str() );
 		if(err) {
-			std::cerr << "Could not unlock new crypted volume\n" << "Error: " << err;
+			std::cerr << "Could not unlock new crypted volume\nError: " << err << "\n";
 			exit(1);
 		}
 		
@@ -185,7 +185,7 @@ void do_copy(std::string source_location, std::string block_device, std::string 
 			err = system((_STR + "/bin/dd if=/dev/zero of=/dev/mapper/TailsData_target bs=8192").c_str() );
 			if(err != 256) { 
 				// yes, we WANT to fail with "no space left on device"!
-				std::cerr << "Could not randomise free space on new crypted volume\n" << "Error: " << err;
+				std::cerr << "Could not randomise free space on new crypted volume\nError: " << err << "\n";
 				luks_close_and_spinlock("/dev/mapper/TailsData_target");
 				exit(1);		
 			}
@@ -199,7 +199,7 @@ void do_copy(std::string source_location, std::string block_device, std::string 
 		if(_DEBUG) std::cerr << "Creating filesystem\n";
 		err = system((_STR + "/sbin/mke2fs -j -t ext4 -L TailsData /dev/mapper/TailsData_target").c_str() );
 		if(err) {
-			std::cerr << "Could not create filesystem on new crypted volume\n" << "Error: " << err;
+			std::cerr << "Could not create filesystem on new crypted volume\nError: " << err << "\n";
 			luks_close_and_spinlock("/dev/mapper/TailsData_target");
 			exit(1);
 		}
@@ -211,7 +211,7 @@ void do_copy(std::string source_location, std::string block_device, std::string 
 	// (re)open the crypted device
 	err = system((_STR + "/sbin/cryptsetup luksOpen " + partition + " TailsData_target").c_str());
 	if(err) {
-		std::cerr << "Could not unlock crypted volume\n" << "Error: " << err;
+		std::cerr << "Could not unlock crypted volume\nError: " << err << "\n";
 		exit(1);
 	}
 
@@ -230,7 +230,7 @@ void do_copy(std::string source_location, std::string block_device, std::string 
 		std::cout << "Copying files...";
 		err = system((_STR + "/usr/bin/rsync -a --delete --exclude=gnupg/random_seed --exclude=lost+found " + source_location + "/ " + mount_point).c_str());
 		if(err) {
-			std::cerr << "Error syncing files\n" << "Error: " << err;
+			std::cerr << "Error syncing files\nError: " << err << "\n";
 			luks_close_and_spinlock("/dev/mapper/TailsData_target");
 			exit(1);
 		}
@@ -244,14 +244,14 @@ void do_copy(std::string source_location, std::string block_device, std::string 
 	// https://tails.boum.org/contribute/design/persistence/#security
 	err = chmod(mount_point.c_str(), 0775);
 	if(err){
-		std::cerr << "Could not set permissions on " << mount_point << "\n" << "Error: " << err;
+		std::cerr << "Could not set permissions on " << mount_point << "\nError: " << err << "\n";
 		system((_STR + "/usr/bin/udisksctl unmount --force --block-device /dev/mapper/TailsData_target").c_str());
 		luks_close_and_spinlock("/dev/mapper/TailsData_target");
 		exit(1);
 	}
 	err = system((_STR + "/usr/bin/setfacl -m user:tails-persistence-setup:rwx " + mount_point).c_str());
 	if(err){
-		std::cerr << "Could not set ACLs on " << mount_point << "\n" << "Error: " << err;
+		std::cerr << "Could not set ACLs on " << mount_point << "\nError: " << err << "\n";
 		system((_STR + "/usr/bin/udisksctl unmount --force --block-device /dev/mapper/TailsData_target").c_str());
 		luks_close_and_spinlock("/dev/mapper/TailsData_target");
 		exit(1);
