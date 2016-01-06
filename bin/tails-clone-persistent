@@ -519,7 +519,7 @@ Otherwise, you should delete it and make one with a new passphrase.
 			&make_failure("Bad syntax when calling ${helper_utility}. Aborting.");
 		}], [
 		/TCPH-ERROR (.*)$/, sub{
-			&make_failure("$1. Aborting.");
+			&make_failure($self->exp_match());
 		}],	
 		
 		# old, specific error handlers
@@ -572,8 +572,9 @@ Otherwise, you should delete it and make one with a new passphrase.
 		
 		# Progress indicators
 		[
-		/TCPH (.*)$/, sub{
-			&make_progress("$1");
+		/TCPH .*$/, sub{
+			&make_progress($self->exp_match());
+			exp_continue;
 		}],	
 		
 		# old, specific progress handlers
