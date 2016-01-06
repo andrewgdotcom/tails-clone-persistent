@@ -24,8 +24,8 @@ use Gtk2 '-init';
 # Secure our path
 $ENV{'PATH'} = '/bin:/usr/bin:/sbin:/usr/sbin';
 
-my $expect_timeout = 300; # Five minutes should be PLENTY
-my $persist_location = '/live/persistence/TailsData_unlocked/';
+my $expect_timeout = 300; # Is this enough? Data flushing can be slooow
+my $persist_location = '/live/persistence/TailsData_unlocked';
 my $helper_utility = '/usr/sbin/tcp-helper';
 
 # for tails v2.x
@@ -592,6 +592,11 @@ Otherwise, you should delete it and make one with a new passphrase.
 #		}], [
 		"Type uppercase yes", sub{
 			my $self=shift;
+			# I suspect a race condition here, as this often fails with
+			# a permissions error within expect, but never fails when
+			# run by hand. Sleep for a while to let data flushing 
+			# happen in the background.
+			sleep(1);
 			$self->send("YES\n");
 			exp_continue;
 		}], [

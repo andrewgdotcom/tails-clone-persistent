@@ -308,7 +308,7 @@ int main(int ARGC, char **ARGV) {
 "\"rsync --delete\" the contents of SOURCE_DIR to a new or existing\n" <<
 "persistent partition on the tails drive BLOCK_DEVICE\n" <<
 "\n" <<
-"SOURCE_DIR: directory to be rsynced\n" <<
+"SOURCE_DIR: directory to be rsynced (without trailing /)\n" <<
 " (If the empty string is given, rsync is skipped)\n" <<
 "\n" <<
 "BLOCK_DEVICE: the target Tails drive (NOT partition!)\n" <<
