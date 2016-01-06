@@ -518,7 +518,7 @@ Otherwise, you should delete it and make one with a new passphrase.
 		"Usage: ${helper_utility}", sub{
 			&make_failure("Bad syntax when calling ${helper_utility}. Aborting.");
 		}], [
-		qr/TCPH_ERROR .*$/, sub{
+		'TCPH_ERROR .*$', sub{
 			my $self=shift;
 			my $prompt = $self->exp_match();
 			$prompt =~ s/^TCPH_ERROR //;
@@ -575,7 +575,7 @@ Otherwise, you should delete it and make one with a new passphrase.
 		
 		# Progress indicators
 		[
-		qr/TCPH .*$/, sub{
+		'TCPH .*$', sub{
 			my $self=shift;
 			my $prompt = $self->exp_match();
 			$prompt =~ s/^TCPH //;
