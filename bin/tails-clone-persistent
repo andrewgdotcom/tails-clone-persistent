@@ -508,88 +508,97 @@ Otherwise, you should delete it and make one with a new passphrase.
 		$exp->log_stdout(0);
 	};
 	
-	$exp->expect($expect_timeout, [
+	$exp->expect($expect_timeout, 
+	
+		# Fatal errors
+		[
 		"Cannot exec", sub{
 			&make_failure("Could not run ${helper_utility}. Aborting.");
 		}], [
 		"Usage: ${helper_utility}", sub{
-			&make_failure("Could not run ${helper_utility}. Aborting.");
+			&make_failure("Bad syntax when calling ${helper_utility}. Aborting.");
 		}], [
-		"Found too many partitions!", sub{
-			&make_failure("Doesn't look like a Tails drive. Aborting.");
-		}], [
-		"Could not mount crypted volume", sub{
-			&make_failure("Could not mount crypted partition. Aborting.");
-		}], [
-		"Could not detect end of tails primary partition", sub{
-			&make_failure("Could not detect end of tails primary partition. Aborting.");
-		}], [
-		"Unsafe characters detected in filename", sub{
-			&make_failure("Unsafe characters in source path. Aborting.");
-		}], [
-		"Could not set permissions on", sub{
-			&make_failure("Could not set permissions on target drive. Aborting.");
-		}], [
-		"Could not set ACLs on", sub{
-			&make_failure("Could not set ACLs on target drive. Aborting.");
-		}], [
-#		"Device /dev/mapper/TailsData_target is not active", sub{
-#			&make_failure("Tried to stop a stopped crypted partition! Aborting.");
+		/TCPH-ERROR (.*)$/, sub{
+			&make_failure("$1. Aborting.");
+		}],	
+		
+		# old, specific error handlers
+#		[
+#		"Could not mount crypted volume", sub{
+#			&make_failure("Could not mount crypted partition. Aborting.");
 #		}], [
-#		"doesn't exist or access denied", sub{
-#			&make_failure("Access failed on target partition. Aborting.");
+#		"Could not detect end of tails primary partition", sub{
+#			&make_failure("Could not detect end of tails primary partition. Aborting.");
 #		}], [
-#		"does not exist and no size was specified", sub{
-#			&make_failure("Could not find crypted volume. Aborting.");
+#		"Unsafe characters detected in filename", sub{
+#			&make_failure("Unsafe characters in source path. Aborting.");
 #		}], [
-		"Could not unlock crypted volume", sub{
-			&make_failure("Could not unlock crypted volume. Bad password? Aborting.");
-		}], [
-		"Could not unlock new crypted volume", sub{
-			&make_failure("Could not unlock crypted volume. This should never happen. Aborting.");
-		}], [
-		"Could not create new partition", sub{
-			&make_failure("Could not create new partition. Aborting.");
-		}], [
-		"Could not rename new partition", sub{
-			&make_failure("Could not rename new partition label. Aborting.");
-		}], [
-		"Could not initialise crypted volume", sub{
-			&make_failure("Could not initialise crypted volume. Aborting.");
-		}], [
-		"Error syncing files", sub{
-			&make_failure("Error syncing files. Aborting.");
-		}], [
-		"Could not create filesystem on new crypted volume", sub{
-			&make_failure("Could not create filesystem on new crypted volume. Aborting.");
-		}], [
-		"Could not randomise free space on new crypted volume", sub{
-			&make_failure("Could not randomise free space on new crypted volume. Aborting.");
-		}], [
-		"Could not delete old persistent partition", sub{
-			&make_failure("Could not delete old persistent partition. Aborting.");
-		}], [
-		"Failed to lock partition", sub{
-			&make_failure("Failed to lock partition. You may need to unmount manually. Aborting gracelessly!");
-		}], [
-		"Mounting crypted partition", sub{
-			&make_progress('Mounting crypted partition...');
-		}], [
-		"Creating new partition", sub{
-			&make_progress('Creating new crypted partition...');
-		}], [
-		"Using existing partition", sub{
-			&make_progress('Using existing crypted partition...');
-		}], [
-		"waiting for buffers to flush", sub{
-			&make_progress('Flushing data to disk...');
-		}], [
-		"plausible deniability", sub{
-			&make_progress('Randomising free space for plausible deniability (this may take some time)...');
-		}], [
-		"Copy complete", sub{
-			&make_progress('Copy complete');
-		}], [
+#		"Could not set permissions on", sub{
+#			&make_failure("Could not set permissions on target drive. Aborting.");
+#		}], [
+#		"Could not set ACLs on", sub{
+#			&make_failure("Could not set ACLs on target drive. Aborting.");
+#		}], [
+#		"Could not unlock crypted volume", sub{
+#			&make_failure("Could not unlock crypted volume. Bad password? Aborting.");
+#		}], [
+#		"Could not unlock new crypted volume", sub{
+#			&make_failure("Could not unlock crypted volume. This should never happen. Aborting.");
+#		}], [
+#		"Could not create new partition", sub{
+#			&make_failure("Could not create new partition. Aborting.");
+#		}], [
+#		"Could not rename new partition", sub{
+#			&make_failure("Could not rename new partition label. Aborting.");
+#		}], [
+#		"Could not initialise crypted volume", sub{
+#			&make_failure("Could not initialise crypted volume. Aborting.");
+#		}], [
+#		"Error syncing files", sub{
+#			&make_failure("Error syncing files. Aborting.");
+#		}], [
+#		"Could not create filesystem on new crypted volume", sub{
+#			&make_failure("Could not create filesystem on new crypted volume. Aborting.");
+#		}], [
+#		"Could not randomise free space on new crypted volume", sub{
+#			&make_failure("Could not randomise free space on new crypted volume. Aborting.");
+#		}], [
+#		"Could not delete old persistent partition", sub{
+#			&make_failure("Could not delete old persistent partition. Aborting.");
+#		}], [
+#		"Failed to lock partition", sub{
+#			&make_failure("Failed to lock partition. You may need to unmount manually. Aborting gracelessly!");
+#		}],
+		
+		# Progress indicators
+		[
+		/TCPH (.*)$/, sub{
+			&make_progress("$1");
+		}],	
+		
+		# old, specific progress handlers
+#		[
+#		"Mounting crypted partition", sub{
+#			&make_progress('Mounting crypted partition...');
+#		}], [
+#		"Creating new partition", sub{
+#			&make_progress('Creating new crypted partition...');
+#		}], [
+#		"Using existing partition", sub{
+#			&make_progress('Using existing crypted partition...');
+#		}], [
+#		"waiting for buffers to flush", sub{
+#			&make_progress('Flushing data to disk...');
+#		}], [
+#		"plausible deniability", sub{
+#			&make_progress('Randomising free space for plausible deniability (this may take some time)...');
+#		}], [
+#		"Copy complete", sub{
+#			&make_progress('Copy complete');
+#		}],	
+		
+		# Request and response
+		[
 		"Type uppercase yes", sub{
 			my $self=shift;
 			# I suspect a race condition here, as this often fails with
