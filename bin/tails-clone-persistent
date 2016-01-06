@@ -371,8 +371,7 @@ sub make_progress() {
 	$graphic_window->show;
 	
 	# run a single GTK iteration to refresh the window
-#	Glib::MainContext->default->iteration(0);
-	Gtk2->main;
+	Gtk2->main_iteration;
 
 	# return success so we can keep doing stuff
 	return 1;
