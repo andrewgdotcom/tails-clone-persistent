@@ -241,7 +241,7 @@ void do_copy(std::string source_location, std::string block_device, std::string 
 		}
 		std::cout << "done\n";
 	} else {
-		std::cout << "Not copying any files, as requested";
+		std::cout << "Not copying any files, as requested\n";
 	}
 	
 	// ensure correct permissions on the root of the persistent disk
