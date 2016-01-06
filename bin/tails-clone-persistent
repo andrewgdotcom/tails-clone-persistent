@@ -18,7 +18,6 @@ use warnings;
 
 use Expect;
 use Gtk2 '-init';
-use Glib;
 
 #use Linux::ACL;		# would be nice but it's not packaged
 
@@ -370,8 +369,8 @@ sub make_progress() {
 	
 	$graphic_window->show;
 	
-	# run a single GTK iteration to refresh the window
-	Gtk2->main_iteration;
+	# run just enough GTK iterations to process the redraw event queue
+	Gtk2->main_iteration while Gtk2->events_pending;
 
 	# return success so we can keep doing stuff
 	return 1;
