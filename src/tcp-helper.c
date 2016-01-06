@@ -151,90 +151,93 @@ void luks_close_and_spinlock(std::string block_device) {
 	}
 }
 
-void do_copy(std::string source_location, std::string block_device, std::string mode) {
+void make_partition(std::string block_device, std::string partition, std::string mode) {
 	int err;
-	std::string partition = block_device + "2";
 
-	if(mode.compare("new")==0 || mode.compare("deniable")==0) {
+	std::cout << "TCPH Configuring partitions\n";
 
-		// call-by-ref information flag
-		int persistent_partition_exists = 0;
-		std::string start = tails_free_start(block_device, &persistent_partition_exists);
-		if(start.compare("")==0) {
-			std::cerr << "TCPH_ERROR Could not detect end of tails primary partition\n";
-			exit(_INTERNAL_PARTED_UNPARSED);
-		}
-		
-		// if >2 partitions, tails_free_start would have aborted above
-		// so safe to assume we need to trash one partition at most
-		if(persistent_partition_exists) {
-			if(_DEBUG) std::cerr << "Deleting old second partition\n";
-			err = system((_STR + "/sbin/parted -s " + block_device + " rm 2").c_str() );	
-			if(err) {
-				std::cerr << "TCPH_ERROR Could not delete old persistent partition\nError: " << err << "\n";
-				exit((0xffff&err) + _ERR_PARTED_RM);
-			}
-		}
-
-		if(_DEBUG) std::cerr << "Making new secondary partition\n";
-		err = system((_STR + "/sbin/parted -s " + block_device + " mkpart primary " + start + " 100%").c_str() );
-		if(err) {
-			std::cerr << "TCPH_ERROR Could not create new partition\nError: " << err << "\n";
-			exit((0xffff&err) + _ERR_PARTED_MKPART);
-		}
-
-		if(_DEBUG) std::cerr << "Renaming partition label\n";
-		err = system((_STR + "/sbin/parted -s " + block_device + " name 2 TailsData").c_str() );
-		if(err) {
-			std::cerr << "TCPH_ERROR Could not rename new partition\nError: " << err << "\n";
-			exit((0xffff&err) + _ERR_PARTED_NAME);
-		}
-
-		if(_DEBUG) std::cerr << "Initialising new crypted volume\n";
-		err = system((_STR + "/sbin/cryptsetup luksFormat " + partition).c_str() );
-		if(err) {
-			std::cerr << "TCPH_ERROR Could not initialise crypted volume\nError: " << err << "\n";
-			exit((0xffff&err) + _ERR_LUKSFORMAT);
-		}
-
-		if(_DEBUG) std::cerr << "Unlocking new crypted volume\n";
-		err = system((_STR + "/sbin/cryptsetup luksOpen " + partition + " TailsData_target").c_str() );
-		if(err) {
-			std::cerr << "TCPH_ERROR Could not unlock new crypted volume\nError: " << err << "\n";
-			exit((0xffff&err) + _ERR_LUKSOPEN);
-		}
-		
-		// plausible deniability
-		if(mode.compare("deniable")==0) {
-			std::cout << "TCPH Randomising free space for plausible deniability. This may take a while.\n";
-			// "a while" =~ 5-10 mins/GB on crappy hardware ;-)
-			
-			// when we update to coreutils 8.24 we can use status=progress
-			err = system((_STR + "/bin/dd if=/dev/zero of=/dev/mapper/TailsData_target bs=128M").c_str() );
-			if(err != 256) { 
-				// yes, we WANT to fail with "no space left on device"!
-				std::cerr << "TCPH_ERROR Could not randomise free space on new crypted volume\nError: " << err << "\n";
-				luks_close_and_spinlock("/dev/mapper/TailsData_target");
-				exit((0xffff&err) + _ERR_DD);		
-			}
-		}
-		
-		// if we're called for deniability purposes only, we _could_
-		// call luksClose right now and prematurely return(), shaving
-		// some time off the process - this will need a new mode
-		// may not be worth the complexity for such a small benefit?
-		
-		if(_DEBUG) std::cerr << "Creating filesystem\n";
-		err = system((_STR + "/sbin/mke2fs -j -t ext4 -L TailsData /dev/mapper/TailsData_target").c_str() );
-		if(err) {
-			std::cerr << "TCPH_ERROR Could not create filesystem on new crypted volume\nError: " << err << "\n";
-			luks_close_and_spinlock("/dev/mapper/TailsData_target");
-			exit((0xffff&err) + _ERR_MKE2FS);
-		}
-		
-		// stop the luks device to force a flush on slow devices
-		luks_close_and_spinlock("/dev/mapper/TailsData_target");
+	// call-by-ref information flag
+	int persistent_partition_exists = 0;
+	std::string start = tails_free_start(block_device, &persistent_partition_exists);
+	if(start.compare("")==0) {
+		std::cerr << "TCPH_ERROR Could not detect end of tails primary partition\n";
+		exit(_INTERNAL_PARTED_UNPARSED);
 	}
+	
+	// if >2 partitions, tails_free_start would have aborted above
+	// so safe to assume we need to trash one partition at most
+	if(persistent_partition_exists) {
+		if(_DEBUG) std::cerr << "Deleting old second partition\n";
+		err = system((_STR + "/sbin/parted -s " + block_device + " rm 2").c_str() );	
+		if(err) {
+			std::cerr << "TCPH_ERROR Could not delete old persistent partition\nError: " << err << "\n";
+			exit((0xffff&err) + _ERR_PARTED_RM);
+		}
+	}
+
+	if(_DEBUG) std::cerr << "Making new secondary partition\n";
+	err = system((_STR + "/sbin/parted -s " + block_device + " mkpart primary " + start + " 100%").c_str() );
+	if(err) {
+		std::cerr << "TCPH_ERROR Could not create new partition\nError: " << err << "\n";
+		exit((0xffff&err) + _ERR_PARTED_MKPART);
+	}
+
+	if(_DEBUG) std::cerr << "Renaming partition label\n";
+	err = system((_STR + "/sbin/parted -s " + block_device + " name 2 TailsData").c_str() );
+	if(err) {
+		std::cerr << "TCPH_ERROR Could not rename new partition\nError: " << err << "\n";
+		exit((0xffff&err) + _ERR_PARTED_NAME);
+	}
+
+	std::cout << "TCPH Initialising new crypted volume\n";
+	err = system((_STR + "/sbin/cryptsetup luksFormat " + partition).c_str() );
+	if(err) {
+		std::cerr << "TCPH_ERROR Could not initialise crypted volume\nError: " << err << "\n";
+		exit((0xffff&err) + _ERR_LUKSFORMAT);
+	}
+
+	if(_DEBUG) std::cerr << "Unlocking new crypted volume\n";
+	err = system((_STR + "/sbin/cryptsetup luksOpen " + partition + " TailsData_target").c_str() );
+	if(err) {
+		std::cerr << "TCPH_ERROR Could not unlock new crypted volume\nError: " << err << "\n";
+		exit((0xffff&err) + _ERR_LUKSOPEN);
+	}
+	
+	// plausible deniability
+	if(mode.compare("deniable")==0) {
+		std::cout << "TCPH Randomising free space for plausible deniability. This may take a while.\n";
+		// "a while" =~ 5-10 mins/GB on crappy hardware ;-)
+		
+		// when we update to coreutils 8.24 we can use status=progress
+		err = system((_STR + "/bin/dd if=/dev/zero of=/dev/mapper/TailsData_target bs=128M").c_str() );
+		if(err != 256) { 
+			// yes, we WANT to fail with "no space left on device"!
+			std::cerr << "TCPH_ERROR Could not randomise free space on new crypted volume\nError: " << err << "\n";
+			luks_close_and_spinlock("/dev/mapper/TailsData_target");
+			exit((0xffff&err) + _ERR_DD);		
+		}
+	}
+	
+	// If we're called for deniability purposes only, we _could_
+	// skip the filesystem creation and save a little time here.
+	// This will need a new mode - may not be worth the hassle
+	
+	std::cout << "TCPH Creating filesystem\n";
+	err = system((_STR + "/sbin/mke2fs -j -t ext4 -L TailsData /dev/mapper/TailsData_target").c_str() );
+	if(err) {
+		std::cerr << "TCPH_ERROR Could not create filesystem on new crypted volume\nError: " << err << "\n";
+		luks_close_and_spinlock("/dev/mapper/TailsData_target");
+		exit((0xffff&err) + _ERR_MKE2FS);
+	}
+	
+	// stop the luks device to force a flush on slow devices
+	luks_close_and_spinlock("/dev/mapper/TailsData_target");
+}
+
+void do_copy(std::string source_location, std::string block_device, std::string partition, std::string mode) {
+	int err;
+	
+	std::cout << "Unlocking crypted partition\n";
 
 	// (re)open the crypted device
 	err = system((_STR + "/sbin/cryptsetup luksOpen " + partition + " TailsData_target").c_str());
@@ -251,24 +254,21 @@ void do_copy(std::string source_location, std::string block_device, std::string 
 	}
 	if(_DEBUG) std::cerr << "Crypted volume mounted on " << mount_point << "\n";
 
-	// if we are told to copy nothing, skip the rsync
-	if(source_location.compare("")!=0) {
-		// run rsync to copy files. Note that --delete does NOT delete
-		// --exclude'd files on the target.
-		std::cout << "TCPH Copying files...\n";
-		err = system((_STR + "/usr/bin/rsync -a --delete --exclude=gnupg/random_seed --exclude=lost+found " + source_location + "/ " + mount_point).c_str());
-		if(err) {
-			std::cerr << "TCPH_ERROR Error syncing files\nError: " << err << "\n";
-			luks_close_and_spinlock("/dev/mapper/TailsData_target");
-			exit((0xffff&err) + _ERR_RSYNC);
-		}
-	} else {
-		std::cout << "TCPH Not copying any files, as requested\n";
+		
+	// run rsync to copy files. Note that --delete does NOT delete
+	// --exclude'd files on the target.
+	std::cout << "TCPH Copying files...\n";
+	err = system((_STR + "/usr/bin/rsync -a --delete --exclude=gnupg/random_seed --exclude=lost+found " + source_location + "/ " + mount_point).c_str());
+	if(err) {
+		std::cerr << "TCPH_ERROR Error syncing files\nError: " << err << "\n";
+		luks_close_and_spinlock("/dev/mapper/TailsData_target");
+		exit((0xffff&err) + _ERR_RSYNC);
 	}
 	
 	// ensure correct permissions on the root of the persistent disk
 	// after rsync mucks them about - otherwise tails will barf. See
 	// https://tails.boum.org/contribute/design/persistence/#security
+	
 	err = chmod(mount_point.c_str(), 0775);
 	if(err){
 		std::cerr << "TCPH_ERROR Could not set permissions on " << mount_point << "\nError: " << err << "\n";
@@ -276,6 +276,7 @@ void do_copy(std::string source_location, std::string block_device, std::string 
 		luks_close_and_spinlock("/dev/mapper/TailsData_target");
 		exit((0xffff&err) + _ERR_CHMOD);
 	}
+	
 	err = system((_STR + "/usr/bin/setfacl -m user:tails-persistence-setup:rwx " + mount_point).c_str());
 	if(err){
 		std::cerr << "TCPH_ERROR Could not set ACLs on " << mount_point << "\nError: " << err << "\n";
@@ -332,6 +333,21 @@ int main(int ARGC, char **ARGV) {
 			}
 		}
 		setreuid(0,0);
-		do_copy(std::string(ARGV[1]), std::string(ARGV[2]), std::string(ARGV[3]));
+		
+		std::string source_location = ARGV[1];
+		std::string block_device = ARGV[2];
+		std::string mode = ARGV[3];
+		
+		std::string partition = block_device + "2";
+
+		if(mode.compare("new")==0 || mode.compare("deniable")==0) {
+			make_partition(block_device, partition, mode);
+		}
+		// if we are told to copy nothing, quit early
+		if(source_location.compare("")==0) {
+			std::cout << "TCPH Not copying any files, as requested\n";
+		} else {
+			do_copy(source_location, block_device, partition, mode);
+		}
 	}
 }
