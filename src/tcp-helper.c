@@ -76,7 +76,7 @@ std::string tails_free_start(std::string block_device, int *persistent_partition
 }
 
 std::string mount_device(std::string device) {
-	char *mount_point;
+	char *mount_point=NULL;
 	
 	std::cerr << "Mounting crypted partition...\n";
 	FILE *pipe = popen((_STR + "/usr/bin/udisksctl mount --block-device " + device).c_str(), "r");
@@ -93,10 +93,15 @@ std::string mount_device(std::string device) {
 				mount_point = strtok_r(0, "\n", &bookmark);
 		} else {
 			// remind me again why this is here?
-			if(_DEBUG) std::cerr << "Parsed output: " << bit1 << "::"<<bit2<<"::"<<bit3<<"::"<<mount_point<<"\n";
+			// if(_DEBUG) std::cerr << "Parsed output: " << bit1 << "::"<<bit2<<"::"<<bit3<<"::"<<mount_point<<"\n";
 		}
 	}
 	fclose(pipe);
+	
+	if(mount_point==NULL) {
+		std::cerr << "Could not mount filesystem!\n";
+		return("");
+	}
 	
 	// Test to see if udisksctl has appended a full stop to the output
 	// and delete it. Some versions do, some don't.
