@@ -234,7 +234,7 @@ void make_partition(std::string block_device, std::string partition, std::string
 	luks_close_and_spinlock("/dev/mapper/TailsData_target");
 }
 
-void do_copy(std::string source_location, std::string block_device, std::string partition, std::string mode) {
+void do_copy(std::string source_location, std::string partition) {
 	int err;
 	
 	std::cout << "Unlocking crypted partition\n";
@@ -347,7 +347,7 @@ int main(int ARGC, char **ARGV) {
 		if(source_location.compare("")==0) {
 			std::cout << "TCPH Not copying any files, as requested\n";
 		} else {
-			do_copy(source_location, block_device, partition, mode);
+			do_copy(source_location, partition);
 		}
 	}
 }
