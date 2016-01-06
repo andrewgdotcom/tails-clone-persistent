@@ -345,9 +345,7 @@ sub make_success() {
 	
 	$event_outcome=0;
 	$graphic_window->show;
-	
-	# run a single GTK iteration to refresh the window
-	Glib::MainContext->default->iteration(0);
+	Gtk2->main;
 	
 	return $event_outcome;
 }
@@ -371,14 +369,9 @@ sub make_progress() {
 	$button_hbox->hide;
 	
 	$graphic_window->show;
-	Gtk2->main;
 	
-#	if($CMD_OPTIONS{'debug'}) {
-#		# wait for the user to press continue
-#		$button_hbox->show_all;
-#		$quit_button->hide;
-#		Gtk2->main;
-#	}
+	# run a single GTK iteration to refresh the window
+	Glib::MainContext->default->iteration(0);
 
 	# return success so we can keep doing stuff
 	return 1;
