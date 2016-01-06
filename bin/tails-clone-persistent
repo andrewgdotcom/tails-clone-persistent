@@ -18,6 +18,7 @@ use warnings;
 
 use Expect;
 use Gtk2 '-init';
+use Glib;
 
 #use Linux::ACL;		# would be nice but it's not packaged
 
@@ -344,7 +345,9 @@ sub make_success() {
 	
 	$event_outcome=0;
 	$graphic_window->show;
-	Gtk2->main;
+	
+	# run a single GTK iteration to refresh the window
+	Glib::MainContext->default->iteration(0);
 	
 	return $event_outcome;
 }
@@ -368,6 +371,7 @@ sub make_progress() {
 	$button_hbox->hide;
 	
 	$graphic_window->show;
+	Gtk2->main;
 	
 #	if($CMD_OPTIONS{'debug'}) {
 #		# wait for the user to press continue
@@ -515,7 +519,7 @@ Otherwise, you should delete it and make one with a new passphrase.
 		"Cannot exec", sub{
 			&make_failure("Could not run ${helper_utility}. Aborting.");
 		}], [
-		"Usage: ${helper_utility}", sub{
+		"Usage: ", sub{
 			&make_failure("Bad syntax when calling ${helper_utility}. Aborting.");
 		}], [
 		'TCPH_ERROR .*$', sub{
