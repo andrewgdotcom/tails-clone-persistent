@@ -18,6 +18,7 @@
 // errors >= 65536 result from failed subprocesses
 // high two bytes identify subprocess
 // low two bytes give subprocess exit code
+// NB: 'dd' subprocess CAN (in theory) fail with error=0
 
 #define _ERR_RSYNC	 				0x10000
 #define _ERR_DD 					0x20000
@@ -208,8 +209,10 @@ void do_copy(std::string source_location, std::string block_device, std::string 
 			std::cout << "TCPH Randomising free space for plausible deniability. This may take a while.\n";
 			// "a while" =~ 5-10 mins/GB on crappy hardware ;-)
 			
-			err = system((_STR + "/usr/bin/pv -n /dev/zero > /dev/mapper/TailsData_target").c_str() );
-			if(err) { 
+			// when we update to coreutils 8.24 we can use status=progress
+			err = system((_STR + "/bin/dd if=/dev/zero of=/dev/mapper/TailsData_target bs=128M").c_str() );
+			if(err != 256) { 
+				// yes, we WANT to fail with "no space left on device"!
 				std::cerr << "TCPH_ERROR Could not randomise free space on new crypted volume\nError: " << err << "\n";
 				luks_close_and_spinlock("/dev/mapper/TailsData_target");
 				exit((0xffff&err) + _ERR_DD);		

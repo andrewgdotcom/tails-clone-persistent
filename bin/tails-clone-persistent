@@ -25,7 +25,7 @@ use Glib;
 # Secure our path
 $ENV{'PATH'} = '/bin:/usr/bin:/sbin:/usr/sbin';
 
-my $expect_timeout = 300; # Is this enough? Data flushing can be slooow
+my $expect_timeout = 3600; # Data flushing can be slooow
 my $persist_location = '/live/persistence/TailsData_unlocked';
 my $helper_utility = '/usr/sbin/tcp-helper';
 
