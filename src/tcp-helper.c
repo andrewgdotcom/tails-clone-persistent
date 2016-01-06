@@ -302,8 +302,25 @@ int main(int ARGC, char **ARGV) {
 			strcmp(ARGV[3], "existing") && 
 			strcmp(ARGV[3], "new") && 
 			strcmp(ARGV[3], "deniable") )){
-		std::cerr << "Usage: " << ARGV[0] << 
-			" SOURCE_DIR BLOCK_DEVICE (existing|new|deniable)\n";
+		std::cerr << 
+"Usage: " << ARGV[0] << " SOURCE_DIR BLOCK_DEVICE MODE\n" <<
+"\n" <<
+"\"rsync --delete\" the contents of SOURCE_DIR to a new or existing\n" <<
+"persistent partition on the tails drive BLOCK_DEVICE\n" <<
+"\n" <<
+"SOURCE_DIR: directory to be rsynced\n" <<
+" (If the empty string is given, rsync is skipped)\n" <<
+"\n" <<
+"BLOCK_DEVICE: the target Tails drive (NOT partition!)\n" <<
+" (e.g. \"/dev/sdb\")\n" <<
+"\n" <<
+"MODE: one of\n" <<
+" existing: update the contents of an existing persistent partition\n" <<
+" new:      delete any existing persistent partition and make a new one\n" <<
+" deniable: as \"new\", but randomise partition before making filesystem\n" <<
+"            (can take a long time, perhaps several minutes/GB)\n" <<
+"\n";
+
 		exit(_INTERNAL_USAGE);
 	} else {
 		if(_DEBUG) std::cerr << "Args: " << std::string(ARGV[1]) <<" "<< std::string(ARGV[2]) <<" "<< std::string(ARGV[3]) << "\n";
