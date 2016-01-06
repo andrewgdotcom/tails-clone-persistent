@@ -8,7 +8,30 @@
 #include <stdio.h>
 #include <sys/stat.h>
 
-int _DEBUG;
+// errors < 65536 are internal
+
+#define _INTERNAL_USAGE 			0x0001
+#define _INTERNAL_SANITATION 		0x0002
+#define _INTERNAL_PARTED_UNPARSED 	0x0003
+#define _INTERNAL_MOUNT 			0x0004
+
+// errors >= 65536 result from failed subprocesses
+// high two bytes identify subprocess
+// low two bytes give subprocess exit code
+// NB: 'dd' subprocess CAN (in theory) fail with error=0
+
+#define _ERR_RSYNC	 				0x10000
+#define _ERR_DD 					0x20000
+#define _ERR_SETFACL 				0x30000
+#define _ERR_CHMOD	 				0x40000
+#define _ERR_PARTED_RM 				0x50000
+#define _ERR_PARTED_MKPART 			0x60000
+#define _ERR_PARTED_NAME 			0x70000
+#define _ERR_LUKSCLOSE 				0x80000
+#define _ERR_LUKSOPEN 				0x90000
+#define _ERR_LUKSFORMAT 			0xa0000
+#define _ERR_MKE2FS 				0xb0000
+
 
 // tails uses a 64 bit kernel, but 32bit userspace.
 // apt-get install libc6-dev-i386 g++-multilib
@@ -17,6 +40,9 @@ int _DEBUG;
 // trick to force string concatenation with +
 #define _STR std::string("")
 //#define _STR std::string("echo ") //debugging
+
+// global debug flag - we set this based on envar TCP_HELPER_DEBUG
+int _DEBUG=0;
 
 // parted cannot automatically find the beginning of free space, so we
 // have to do it ourselves
@@ -121,7 +147,7 @@ void luks_close_and_spinlock(std::string block_device) {
 	} while( err == 5 );
 	if(err) {
 		std::cerr << "Failed to lock partition! PANIC!\nError: " << err << "\n";
-		exit(1);
+		exit((0xffff&err) + _ERR_LUKSCLOSE);
 	}
 }
 
@@ -140,7 +166,7 @@ void do_copy(std::string source_location, std::string block_device, std::string 
 		std::string start = tails_free_start(block_device, &persistent_partition_exists);
 		if(start.compare("")==0) {
 			std::cerr << "Could not detect end of tails primary partition\n";
-			exit(1);
+			exit(_INTERNAL_PARTED_UNPARSED);
 		}
 		
 		// if >2 partitions, tails_free_start would have aborted above
@@ -150,7 +176,7 @@ void do_copy(std::string source_location, std::string block_device, std::string 
 			err = system((_STR + "/sbin/parted -s " + block_device + " rm 2").c_str() );	
 			if(err) {
 				std::cerr << "Could not delete old persistent partition\nError: " << err << "\n";
-				exit(1);
+				exit((0xffff&err) + _ERR_PARTED_RM);
 			}
 		}
 
@@ -158,28 +184,28 @@ void do_copy(std::string source_location, std::string block_device, std::string 
 		err = system((_STR + "/sbin/parted -s " + block_device + " mkpart primary " + start + " 100%").c_str() );
 		if(err) {
 			std::cerr << "Could not create new partition\nError: " << err << "\n";
-			exit(1);
+			exit((0xffff&err) + _ERR_PARTED_MKPART);
 		}
 
 		if(_DEBUG) std::cerr << "Renaming partition label\n";
 		err = system((_STR + "/sbin/parted -s " + block_device + " name 2 TailsData").c_str() );
 		if(err) {
 			std::cerr << "Could not rename new partition\nError: " << err << "\n";
-			exit(1);
+			exit((0xffff&err) + _ERR_PARTED_NAME);
 		}
 
 		if(_DEBUG) std::cerr << "Initialising new crypted volume\n";
 		err = system((_STR + "/sbin/cryptsetup luksFormat " + partition).c_str() );
 		if(err) {
 			std::cerr << "Could not initialise crypted volume\nError: " << err << "\n";
-			exit(1);
+			exit((0xffff&err) + _ERR_LUKSFORMAT);
 		}
 
 		if(_DEBUG) std::cerr << "Unlocking new crypted volume\n";
 		err = system((_STR + "/sbin/cryptsetup luksOpen " + partition + " TailsData_target").c_str() );
 		if(err) {
 			std::cerr << "Could not unlock new crypted volume\nError: " << err << "\n";
-			exit(1);
+			exit((0xffff&err) + _ERR_LUKSOPEN);
 		}
 		
 		// plausible deniability
@@ -192,7 +218,7 @@ void do_copy(std::string source_location, std::string block_device, std::string 
 				// yes, we WANT to fail with "no space left on device"!
 				std::cerr << "Could not randomise free space on new crypted volume\nError: " << err << "\n";
 				luks_close_and_spinlock("/dev/mapper/TailsData_target");
-				exit(1);		
+				exit((0xffff&err) + _ERR_DD);		
 			}
 		}
 		
@@ -206,7 +232,7 @@ void do_copy(std::string source_location, std::string block_device, std::string 
 		if(err) {
 			std::cerr << "Could not create filesystem on new crypted volume\nError: " << err << "\n";
 			luks_close_and_spinlock("/dev/mapper/TailsData_target");
-			exit(1);
+			exit((0xffff&err) + _ERR_MKE2FS);
 		}
 		
 		// stop the luks device to force a flush on slow devices
@@ -217,14 +243,14 @@ void do_copy(std::string source_location, std::string block_device, std::string 
 	err = system((_STR + "/sbin/cryptsetup luksOpen " + partition + " TailsData_target").c_str());
 	if(err) {
 		std::cerr << "Could not unlock crypted volume\nError: " << err << "\n";
-		exit(1);
+		exit((0xffff&err) + _ERR_LUKSOPEN);
 	}
 
 	std::string mount_point = mount_device("/dev/mapper/TailsData_target");
 	if(mount_point.compare("")==0) {
 		std::cerr << "Could not mount crypted volume\n";
 		luks_close_and_spinlock("/dev/mapper/TailsData_target");
-		exit(1);
+		exit(_INTERNAL_MOUNT);
 	}
 	if(_DEBUG) std::cerr << "Crypted volume mounted on " << mount_point << "\n";
 
@@ -237,7 +263,7 @@ void do_copy(std::string source_location, std::string block_device, std::string 
 		if(err) {
 			std::cerr << "Error syncing files\nError: " << err << "\n";
 			luks_close_and_spinlock("/dev/mapper/TailsData_target");
-			exit(1);
+			exit((0xffff&err) + _ERR_RSYNC);
 		}
 		std::cout << "done\n";
 	} else {
@@ -252,14 +278,14 @@ void do_copy(std::string source_location, std::string block_device, std::string 
 		std::cerr << "Could not set permissions on " << mount_point << "\nError: " << err << "\n";
 		system((_STR + "/usr/bin/udisksctl unmount --force --block-device /dev/mapper/TailsData_target").c_str());
 		luks_close_and_spinlock("/dev/mapper/TailsData_target");
-		exit(1);
+		exit((0xffff&err) + _ERR_CHMOD);
 	}
 	err = system((_STR + "/usr/bin/setfacl -m user:tails-persistence-setup:rwx " + mount_point).c_str());
 	if(err){
 		std::cerr << "Could not set ACLs on " << mount_point << "\nError: " << err << "\n";
 		system((_STR + "/usr/bin/udisksctl unmount --force --block-device /dev/mapper/TailsData_target").c_str());
 		luks_close_and_spinlock("/dev/mapper/TailsData_target");
-		exit(1);
+		exit((0xffff&err) + _ERR_SETFACL);
 	}
 
 	system((_STR + "/usr/bin/udisksctl unmount --block-device /dev/mapper/TailsData_target").c_str());
@@ -278,7 +304,7 @@ int main(int ARGC, char **ARGV) {
 			strcmp(ARGV[3], "deniable") )){
 		std::cerr << "Usage: " << ARGV[0] << 
 			" SOURCE_DIR BLOCK_DEVICE (existing|new|deniable)\n";
-		exit(-1);
+		exit(_INTERNAL_USAGE);
 	} else {
 		if(_DEBUG) std::cerr << "Args: " << std::string(ARGV[1]) <<" "<< std::string(ARGV[2]) <<" "<< std::string(ARGV[3]) << "\n";
 		// sanitize our input
@@ -288,7 +314,7 @@ int main(int ARGC, char **ARGV) {
 			int safe = regexec(bad_chars, ARGV[i], 0, 0, 0);
 			if(!safe) {
 				std::cerr << "Unsafe characters detected in filename. Aborting\n";
-				exit(-1);
+				exit(_INTERNAL_SANITATION);
 			}
 		}
 		setreuid(0,0);
