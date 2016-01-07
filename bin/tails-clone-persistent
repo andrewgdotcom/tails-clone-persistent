@@ -495,15 +495,20 @@ Otherwise, you should delete it and make one with a new passphrase.
 	&make_progress('Copying data...');
 	
 	$ENV{'TCP_HELPER_DEBUG'}='1' if $CMD_OPTIONS{'debug'};
-	my $exp = Expect->spawn($helper_utility, $source_location, $block_device, $partition_mode);
-	&make_failure("Could not run ${helper_utility}. Aborting.") unless $exp;
-
+	# the "factory" is just a standard expect object
+	my $exp_factory = new Expect;
+	# set default behaviours on the factory before spawning
+	$exp_factory->raw_pty(1);
 	if($CMD_OPTIONS{'debug'}) {
-		$exp->exp_internal(1);
+		$exp_factory->exp_internal(1);
 	} else {
-		$exp->log_stdout(0);
+		$exp_factory->log_stdout(0);
 	};
 	
+	# fork a new expect from the factory
+	my $exp = $exp_factory->spawn($helper_utility, $source_location, $block_device, $partition_mode);
+	&make_failure("Could not run ${helper_utility}. Aborting.") unless $exp;
+
 	$exp->expect($expect_timeout, 
 	
 		# Fatal errors
@@ -520,55 +525,7 @@ Otherwise, you should delete it and make one with a new passphrase.
 			$prompt =~ s/^TCPH_ERROR //;
 			&make_failure($prompt);
 		}],	
-		
-		# old, specific error handlers
-#		[
-#		"Could not mount crypted volume", sub{
-#			&make_failure("Could not mount crypted partition. Aborting.");
-#		}], [
-#		"Could not detect end of tails primary partition", sub{
-#			&make_failure("Could not detect end of tails primary partition. Aborting.");
-#		}], [
-#		"Unsafe characters detected in filename", sub{
-#			&make_failure("Unsafe characters in source path. Aborting.");
-#		}], [
-#		"Could not set permissions on", sub{
-#			&make_failure("Could not set permissions on target drive. Aborting.");
-#		}], [
-#		"Could not set ACLs on", sub{
-#			&make_failure("Could not set ACLs on target drive. Aborting.");
-#		}], [
-#		"Could not unlock crypted volume", sub{
-#			&make_failure("Could not unlock crypted volume. Bad password? Aborting.");
-#		}], [
-#		"Could not unlock new crypted volume", sub{
-#			&make_failure("Could not unlock crypted volume. This should never happen. Aborting.");
-#		}], [
-#		"Could not create new partition", sub{
-#			&make_failure("Could not create new partition. Aborting.");
-#		}], [
-#		"Could not rename new partition", sub{
-#			&make_failure("Could not rename new partition label. Aborting.");
-#		}], [
-#		"Could not initialise crypted volume", sub{
-#			&make_failure("Could not initialise crypted volume. Aborting.");
-#		}], [
-#		"Error syncing files", sub{
-#			&make_failure("Error syncing files. Aborting.");
-#		}], [
-#		"Could not create filesystem on new crypted volume", sub{
-#			&make_failure("Could not create filesystem on new crypted volume. Aborting.");
-#		}], [
-#		"Could not randomise free space on new crypted volume", sub{
-#			&make_failure("Could not randomise free space on new crypted volume. Aborting.");
-#		}], [
-#		"Could not delete old persistent partition", sub{
-#			&make_failure("Could not delete old persistent partition. Aborting.");
-#		}], [
-#		"Failed to lock partition", sub{
-#			&make_failure("Failed to lock partition. You may need to unmount manually. Aborting gracelessly!");
-#		}],
-		
+				
 		# Progress indicators
 		[
 		'TCPH .*$', sub{
@@ -578,28 +535,7 @@ Otherwise, you should delete it and make one with a new passphrase.
 			&make_progress($prompt);
 			exp_continue;
 		}],	
-		
-		# old, specific progress handlers
-#		[
-#		"Mounting crypted partition", sub{
-#			&make_progress('Mounting crypted partition...');
-#		}], [
-#		"Creating new partition", sub{
-#			&make_progress('Creating new crypted partition...');
-#		}], [
-#		"Using existing partition", sub{
-#			&make_progress('Using existing crypted partition...');
-#		}], [
-#		"waiting for buffers to flush", sub{
-#			&make_progress('Flushing data to disk...');
-#		}], [
-#		"plausible deniability", sub{
-#			&make_progress('Randomising free space for plausible deniability (this may take some time)...');
-#		}], [
-#		"Copy complete", sub{
-#			&make_progress('Copy complete');
-#		}],	
-		
+				
 		# Request and response
 		[
 		"Type uppercase yes", sub{
