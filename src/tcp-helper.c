@@ -45,8 +45,11 @@
 // global debug flag - we set this based on envar TCP_HELPER_DEBUG
 int _DEBUG=0;
 
+
+
 // parted cannot automatically find the beginning of free space, so we
 // have to do it ourselves
+
 std::string tails_free_start(std::string block_device, int *persistent_partition_exists) {
 	*persistent_partition_exists=0;
 	
@@ -102,6 +105,9 @@ std::string tails_free_start(std::string block_device, int *persistent_partition
 	return _STR + buffer;
 }
 
+
+// mount a filesystem and return a string containing the mount point
+
 std::string mount_device(std::string device) {
 	char *mount_point=NULL;
 	
@@ -140,7 +146,7 @@ std::string mount_device(std::string device) {
 }
 
 
-// Emergency cleanup
+// Housekeeping and cleanup
 
 void luks_close_unmounted(std::string crypted_block_device) {
 	// use this to make sure all data is flushed and cryption stopped
@@ -166,7 +172,17 @@ void unmount_and_luks_close(std::string crypted_block_device) {
 }
 
 
-
+// Create a persistent partition, deleting any old ones as necessary.
+// This is called for modes "new" and "deniable".
+// We luksClose the partition at the end for two reasons:
+//
+// a) simplicity: do_copy() doesn't need to know if we were called
+// b) safety: we found odd problems mounting newly-created partitions 
+//    that were solved by forcing a flush to disk
+//
+// This does mean we end up luksOpening the partition twice. This is
+// fine, as we aren't intended to be called directly and Expect doesn't
+// care how many times it is prompted for the same passphrase. ;-)
 
 void make_partition(
 		std::string block_device, 
@@ -256,6 +272,11 @@ void make_partition(
 	luks_close_unmounted(tmp_target_dev_path);
 }
 
+
+// rsync files from a location on an already-mounted FS to / on an 
+// existing, unmounted FS on a non-running luks partition. 
+// This is called only if SOURCE_LOCATION is non-empty
+
 void do_copy(
 		std::string source_location, 
 		std::string partition, 
@@ -321,6 +342,9 @@ void do_copy(
 	
 	std::cout << "TCPH Copy complete\n";
 }
+
+
+// MAIN
 
 int main(int ARGC, char **ARGV) {
 	if(getenv("TCP_HELPER_DEBUG")) {
