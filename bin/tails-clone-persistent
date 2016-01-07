@@ -554,6 +554,13 @@ Otherwise, you should delete it and make one with a new passphrase.
 			sleep(1);
 			$self->send("${passphrase}\n");
 			exp_continue;
+		}], [
+		"No key available with this passphrase", sub{
+			$passphrase = &secure_input('Could not unlock target partition with that passphrase. Please try again');
+			unless($passphrase) {
+				&make_failure("Could not unlock target partition");
+			}
+			exp_continue;
 		}]
 	);
 	
@@ -561,7 +568,7 @@ Otherwise, you should delete it and make one with a new passphrase.
 }
 
 
-sub clone_from_tails {	
+sub clone_from_tails {
 	my $tails_partition = &get_tails_partition();
 	&make_failure("Could not determine running Tails partition. Aborting.") unless $tails_partition;
 	print "Tails volume found on $tails_partition\n" if $CMD_OPTIONS{'debug'};
@@ -592,7 +599,7 @@ sub clone_from_tails {
 	do {
 		&make_progress('Flushing data to disk...');
 	} until system('/sbin/cryptsetup', 'luksClose', 'TailsData_source')==0;
-	&make_progress('Copy complete');
+	&make_success('Copy complete');
 }
 
 
@@ -610,11 +617,11 @@ sub main {
 	
 	if($CMD_OPTIONS{'help'}) {
 		&option_help;
-	} elsif($CMD_OPTIONS{'pull'}) {
-		if($> != 0) {
-			&make_failure("Only root can overwrite running config; try again using sudo.");
-		}
-		&clone_from_tails;
+#	} elsif($CMD_OPTIONS{'pull'}) {
+#		if($> != 0) {
+#			&make_failure("Only root can overwrite running config; try again using sudo.");
+#		}
+#		&clone_from_tails;
 	} elsif($CMD_OPTIONS{'skel'}) {
 		&clone_to_tails($CMD_OPTIONS{'skel'});
 	} else {
