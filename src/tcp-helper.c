@@ -362,6 +362,7 @@ int main(int ARGC, char **ARGV) {
 "\n" <<
 "BLOCK_DEVICE: the target Tails drive (NOT partition!)\n" <<
 " (e.g. \"/dev/sdb\")\n" <<
+" NB It should be neither luksOpened nor mounted\n" <<
 "\n" <<
 "MODE: one of\n" <<
 " existing: update the contents of an existing persistent partition\n" <<
