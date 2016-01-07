@@ -82,19 +82,16 @@ std::string tails_free_start(std::string block_device, int *persistent_partition
 				strncpy(buffer, line+offset, len);
 				// make double sure it's properly null terminated
 				buffer[len]='\0';
-				
 				if(_DEBUG) std::cerr << "Got partition end location: " << buffer <<"\n";
+				
 				// check to see if a second partition exists
-				if(fgets(line, 1000, pipe)) {
-					if(strlen(line) > 3) {
-						*persistent_partition_exists=1;
-						// sanity check that no more partitions exist
-						if(fgets(line, 1000, pipe)) {
-							if(strlen(line) > 3) {
-								if(_DEBUG) std::cerr << "Found too many partitions!\n";
-								buffer[0]='\0';
-							}
-						}
+				if(fgets(line, 1000, pipe) && strlen(line) > 3) {
+					*persistent_partition_exists=1;
+					
+					// sanity check that no more partitions exist
+					if(fgets(line, 1000, pipe) && strlen(line) > 3) {
+						if(_DEBUG) std::cerr << "Found too many partitions!\n";
+						buffer[0]='\0';
 					}
 				}
 			}
