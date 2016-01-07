@@ -275,10 +275,10 @@ void make_partition(
 
 // rsync files from a location on an already-mounted FS to / on an 
 // existing, unmounted FS on a non-running luks partition. 
-// This is called only if SOURCE_LOCATION is non-empty
+// This is called only if SOURCE_DIR is non-empty
 
 void do_copy(
-		std::string source_location, 
+		std::string source_dir, 
 		std::string partition, 
 		std::string tmp_target_dev_id) {
 	int err;
@@ -305,7 +305,7 @@ void do_copy(
 	// run rsync to copy files. Note that --delete does NOT delete
 	// --exclude'd files on the target.
 	std::cout << "TCPH Copying files...\n";
-	err = system((_STR + "/usr/bin/rsync -a --delete --exclude=gnupg/random_seed --exclude=lost+found " + source_location + "/ " + mount_point).c_str());
+	err = system((_STR + "/usr/bin/rsync -a --delete --exclude=gnupg/random_seed --exclude=lost+found " + source_dir + "/ " + mount_point).c_str());
 	if(err) {
 		std::cerr << "TCPH_ERROR Error syncing files\nError: " << err << "\n";
 		unmount_and_luks_close(tmp_target_dev_path);
@@ -388,7 +388,7 @@ int main(int ARGC, char **ARGV) {
 		}
 		setreuid(0,0);
 		
-		std::string source_location = ARGV[1];
+		std::string source_dir = ARGV[1];
 		std::string block_device = ARGV[2];
 		std::string mode = ARGV[3];
 		
@@ -402,10 +402,10 @@ int main(int ARGC, char **ARGV) {
 			make_partition(block_device, partition, tmp_target_dev_id, mode);
 		}
 		// if we are told to copy nothing, quit early
-		if(source_location.compare("")==0) {
+		if(source_dir.compare("")==0) {
 			std::cout << "TCPH Not copying any files, as requested\n";
 		} else {
-			do_copy(source_location, partition, tmp_target_dev_id);
+			do_copy(source_dir, partition, tmp_target_dev_id);
 		}
 	}
 }
