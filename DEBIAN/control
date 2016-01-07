@@ -1,9 +1,9 @@
 Package: tails-clone-persistent
-Version: 0.1.0-alpha1-11
+Version: 0.1.1~beta1
 Section: main
 Priority: extra
 Architecture: i386
-Depends: perl, libfile-homedir-perl, libdatetime-perl, libgtk2-perl, libexpect-perl
+Depends: perl, libfile-homedir-perl, libdatetime-perl, libgtk2-perl, libexpect-perl, udisks2
 Breaks: frith (<< 0.0.48)
 Replaces: frith (<< 0.0.48)
 Maintainer: andrewg@andrewg.com
