@@ -142,12 +142,12 @@ std::string mount_device(std::string device) {
 
 // Emergency cleanup
 
-void luks_close_unmounted(std::string block_device) {
+void luks_close_unmounted(std::string crypted_block_device) {
 	// use this to make sure all data is flushed and cryption stopped
 	int err;
 	do {
 		std::cout << "TCPH Attempting to stop device (waiting for buffers to flush)\n";
-		err = system((_STR + "/sbin/cryptsetup luksClose " + block_device).c_str());
+		err = system((_STR + "/sbin/cryptsetup luksClose " + crypted_block_device).c_str());
 	} while( err == 5 );
 	if(err) {
 		std::cerr << "TCPH_ERROR Failed to lock partition!\nError: " << err << "\n";
@@ -155,14 +155,14 @@ void luks_close_unmounted(std::string block_device) {
 	}
 }
 
-void unmount_and_luks_close(std::string block_device) {
+void unmount_and_luks_close(std::string crypted_block_device) {
 	int err;
-	err = system((_STR + "/usr/bin/udisksctl unmount --force --block-device " + block_device).c_str());
+	err = system((_STR + "/usr/bin/udisksctl unmount --force --block-device " + crypted_block_device).c_str());
 	if(err) {
 		std::cerr << "TCPH_ERROR Failed to unmount partition!\nError: " << err << "\n";
 		exit((0xffff&err) + _ERR_UNMOUNT);
 	}
-	luks_close_unmounted(block_device);
+	luks_close_unmounted(crypted_block_device);
 }
 
 
