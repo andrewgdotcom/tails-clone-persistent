@@ -168,8 +168,13 @@ void unmount_and_luks_close(std::string crypted_block_device) {
 
 
 
-void make_partition(std::string block_device, std::string partition, std::string mode) {
+void make_partition(
+		std::string block_device, 
+		std::string partition, 
+		std::string tmp_target_dev_id, 
+		std::string mode) {
 	int err;
+	std::string tmp_target_dev_path = _STR + "/dev/mapper" + tmp_target_dev_id;
 
 	std::cout << "TCPH Configuring partitions\n";
 
@@ -214,7 +219,7 @@ void make_partition(std::string block_device, std::string partition, std::string
 	}
 
 	if(_DEBUG) std::cerr << "Unlocking new crypted volume\n";
-	err = system((_STR + "/sbin/cryptsetup luksOpen " + partition + " TailsData_target").c_str() );
+	err = system((_STR + "/sbin/cryptsetup luksOpen " + partition + " " + tmp_target_dev_id).c_str() );
 	if(err) {
 		std::cerr << "TCPH_ERROR Could not unlock new crypted volume\nError: " << err << "\n";
 		exit((0xffff&err) + _ERR_LUKSOPEN);
@@ -226,11 +231,11 @@ void make_partition(std::string block_device, std::string partition, std::string
 		// "a while" =~ 5-10 mins/GB on crappy hardware ;-)
 		
 		// when we update to coreutils 8.24 we can use status=progress
-		err = system((_STR + "/bin/dd if=/dev/zero of=/dev/mapper/TailsData_target bs=128M").c_str() );
+		err = system((_STR + "/bin/dd if=/dev/zero of=" + tmp_target_dev_path + " bs=128M").c_str() );
 		if(err != 256) { 
 			// yes, we WANT to fail with "no space left on device"!
 			std::cerr << "TCPH_ERROR Could not randomise free space on new crypted volume\nError: " << err << "\n";
-			luks_close_unmounted("/dev/mapper/TailsData_target");
+			luks_close_unmounted(tmp_target_dev_path);
 			exit((0xffff&err) + _ERR_DD);		
 		}
 	}
@@ -240,33 +245,37 @@ void make_partition(std::string block_device, std::string partition, std::string
 	// This will need a new mode - may not be worth the hassle
 	
 	std::cout << "TCPH Creating filesystem\n";
-	err = system((_STR + "/sbin/mke2fs -j -t ext4 -L TailsData /dev/mapper/TailsData_target").c_str() );
+	err = system((_STR + "/sbin/mke2fs -j -t ext4 -L TailsData " + tmp_target_dev_path).c_str() );
 	if(err) {
 		std::cerr << "TCPH_ERROR Could not create filesystem on new crypted volume\nError: " << err << "\n";
-		luks_close_unmounted("/dev/mapper/TailsData_target");
+		luks_close_unmounted(tmp_target_dev_path);
 		exit((0xffff&err) + _ERR_MKE2FS);
 	}
 	
 	// stop the luks device to force a flush on slow devices
-	luks_close_unmounted("/dev/mapper/TailsData_target");
+	luks_close_unmounted(tmp_target_dev_path);
 }
 
-void do_copy(std::string source_location, std::string partition) {
+void do_copy(
+		std::string source_location, 
+		std::string partition, 
+		std::string tmp_target_dev_id) {
 	int err;
+	std::string tmp_target_dev_path = _STR + "/dev/mapper" + tmp_target_dev_id;
 	
 	std::cout << "Unlocking crypted partition\n";
 
 	// (re)open the crypted device
-	err = system((_STR + "/sbin/cryptsetup luksOpen " + partition + " TailsData_target").c_str());
+	err = system((_STR + "/sbin/cryptsetup luksOpen " + partition + " " + tmp_target_dev_id).c_str());
 	if(err) {
 		std::cerr << "TCPH_ERROR Could not unlock crypted volume\nError: " << err << "\n";
 		exit((0xffff&err) + _ERR_LUKSOPEN);
 	}
 
-	std::string mount_point = mount_device("/dev/mapper/TailsData_target");
+	std::string mount_point = mount_device(tmp_target_dev_path);
 	if(mount_point.compare("")==0) {
 		std::cerr << "TCPH_ERROR Could not mount crypted volume\n";
-		luks_close_unmounted("/dev/mapper/TailsData_target");
+		luks_close_unmounted(tmp_target_dev_path);
 		exit(_INTERNAL_MOUNT);
 	}
 	if(_DEBUG) std::cerr << "Crypted volume mounted on " << mount_point << "\n";
@@ -278,7 +287,7 @@ void do_copy(std::string source_location, std::string partition) {
 	err = system((_STR + "/usr/bin/rsync -a --delete --exclude=gnupg/random_seed --exclude=lost+found " + source_location + "/ " + mount_point).c_str());
 	if(err) {
 		std::cerr << "TCPH_ERROR Error syncing files\nError: " << err << "\n";
-		unmount_and_luks_close("/dev/mapper/TailsData_target");
+		unmount_and_luks_close(tmp_target_dev_path);
 		exit((0xffff&err) + _ERR_RSYNC);
 	}
 	
@@ -289,26 +298,26 @@ void do_copy(std::string source_location, std::string partition) {
 	err = chmod(mount_point.c_str(), 0775);
 	if(err){
 		std::cerr << "TCPH_ERROR Could not set permissions on " << mount_point << "\nError: " << err << "\n";
-		unmount_and_luks_close("/dev/mapper/TailsData_target");
+		unmount_and_luks_close(tmp_target_dev_path);
 		exit((0xffff&err) + _ERR_CHMOD);
 	}
 	
 	err = system((_STR + "/usr/bin/setfacl -b " + mount_point).c_str());
 	if(err){
 		std::cerr << "TCPH_ERROR Could not clear ACLs on " << mount_point << "\nError: " << err << "\n";
-		unmount_and_luks_close("/dev/mapper/TailsData_target");
+		unmount_and_luks_close(tmp_target_dev_path);
 		exit((0xffff&err) + _ERR_SETFACL);
 	}
 
 	err = system((_STR + "/usr/bin/setfacl -m user:tails-persistence-setup:rwx " + mount_point).c_str());
 	if(err){
 		std::cerr << "TCPH_ERROR Could not set ACLs on " << mount_point << "\nError: " << err << "\n";
-		unmount_and_luks_close("/dev/mapper/TailsData_target");
+		unmount_and_luks_close(tmp_target_dev_path);
 		exit((0xffff&err) + _ERR_SETFACL);
 	}
 
 	std::cout << "TCPH Unmounting and flushing data to disk\n";
-	unmount_and_luks_close("/dev/mapper/TailsData_target");
+	unmount_and_luks_close(tmp_target_dev_path);
 	
 	std::cout << "TCPH Copy complete\n";
 }
@@ -360,15 +369,19 @@ int main(int ARGC, char **ARGV) {
 		std::string mode = ARGV[3];
 		
 		std::string partition = block_device + "2";
+		
+		// temp ID by which the target crypt drive will be known
+		// should probably randomise this to prevent clashing
+		std::string tmp_target_dev_id = "TailsData_target";
 
 		if(mode.compare("new")==0 || mode.compare("deniable")==0) {
-			make_partition(block_device, partition, mode);
+			make_partition(block_device, partition, tmp_target_dev_id, mode);
 		}
 		// if we are told to copy nothing, quit early
 		if(source_location.compare("")==0) {
 			std::cout << "TCPH Not copying any files, as requested\n";
 		} else {
-			do_copy(source_location, partition);
+			do_copy(source_location, partition, tmp_target_dev_id);
 		}
 	}
 }
