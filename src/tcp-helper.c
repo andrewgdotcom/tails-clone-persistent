@@ -277,6 +277,14 @@ void do_copy(std::string source_location, std::string partition) {
 		exit((0xffff&err) + _ERR_CHMOD);
 	}
 	
+	err = system((_STR + "/usr/bin/setfacl -b " + mount_point).c_str());
+	if(err){
+		std::cerr << "TCPH_ERROR Could not clear ACLs on " << mount_point << "\nError: " << err << "\n";
+		system((_STR + "/usr/bin/udisksctl unmount --force --block-device /dev/mapper/TailsData_target").c_str());
+		luks_close_and_spinlock("/dev/mapper/TailsData_target");
+		exit((0xffff&err) + _ERR_SETFACL);
+	}
+
 	err = system((_STR + "/usr/bin/setfacl -m user:tails-persistence-setup:rwx " + mount_point).c_str());
 	if(err){
 		std::cerr << "TCPH_ERROR Could not set ACLs on " << mount_point << "\nError: " << err << "\n";
