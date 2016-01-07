@@ -31,6 +31,7 @@
 #define _ERR_LUKSOPEN 				0x90000
 #define _ERR_LUKSFORMAT 			0xa0000
 #define _ERR_MKE2FS 				0xb0000
+#define _ERR_UNMOUNT 				0xc0000
 
 
 // tails uses a 64 bit kernel, but 32bit userspace.
@@ -138,7 +139,10 @@ std::string mount_device(std::string device) {
 	return(_STR + mount_point);
 }
 
-void luks_close_and_spinlock(std::string block_device) {
+
+// Emergency cleanup
+
+void luks_close_unmounted(std::string block_device) {
 	// use this to make sure all data is flushed and cryption stopped
 	int err;
 	do {
@@ -150,6 +154,19 @@ void luks_close_and_spinlock(std::string block_device) {
 		exit((0xffff&err) + _ERR_LUKSCLOSE);
 	}
 }
+
+void unmount_and_luks_close(std::string block_device) {
+	int err;
+	err = system((_STR + "/usr/bin/udisksctl unmount --force --block-device " + block_device).c_str());
+	if(err) {
+		std::cerr << "TCPH_ERROR Failed to unmount partition!\nError: " << err << "\n";
+		exit((0xffff&err) + _ERR_UNMOUNT);
+	}
+	luks_close_unmounted(block_device);
+}
+
+
+
 
 void make_partition(std::string block_device, std::string partition, std::string mode) {
 	int err;
@@ -213,7 +230,7 @@ void make_partition(std::string block_device, std::string partition, std::string
 		if(err != 256) { 
 			// yes, we WANT to fail with "no space left on device"!
 			std::cerr << "TCPH_ERROR Could not randomise free space on new crypted volume\nError: " << err << "\n";
-			luks_close_and_spinlock("/dev/mapper/TailsData_target");
+			luks_close_unmounted("/dev/mapper/TailsData_target");
 			exit((0xffff&err) + _ERR_DD);		
 		}
 	}
@@ -226,12 +243,12 @@ void make_partition(std::string block_device, std::string partition, std::string
 	err = system((_STR + "/sbin/mke2fs -j -t ext4 -L TailsData /dev/mapper/TailsData_target").c_str() );
 	if(err) {
 		std::cerr << "TCPH_ERROR Could not create filesystem on new crypted volume\nError: " << err << "\n";
-		luks_close_and_spinlock("/dev/mapper/TailsData_target");
+		luks_close_unmounted("/dev/mapper/TailsData_target");
 		exit((0xffff&err) + _ERR_MKE2FS);
 	}
 	
 	// stop the luks device to force a flush on slow devices
-	luks_close_and_spinlock("/dev/mapper/TailsData_target");
+	luks_close_unmounted("/dev/mapper/TailsData_target");
 }
 
 void do_copy(std::string source_location, std::string partition) {
@@ -249,7 +266,7 @@ void do_copy(std::string source_location, std::string partition) {
 	std::string mount_point = mount_device("/dev/mapper/TailsData_target");
 	if(mount_point.compare("")==0) {
 		std::cerr << "TCPH_ERROR Could not mount crypted volume\n";
-		luks_close_and_spinlock("/dev/mapper/TailsData_target");
+		luks_close_unmounted("/dev/mapper/TailsData_target");
 		exit(_INTERNAL_MOUNT);
 	}
 	if(_DEBUG) std::cerr << "Crypted volume mounted on " << mount_point << "\n";
@@ -261,7 +278,7 @@ void do_copy(std::string source_location, std::string partition) {
 	err = system((_STR + "/usr/bin/rsync -a --delete --exclude=gnupg/random_seed --exclude=lost+found " + source_location + "/ " + mount_point).c_str());
 	if(err) {
 		std::cerr << "TCPH_ERROR Error syncing files\nError: " << err << "\n";
-		luks_close_and_spinlock("/dev/mapper/TailsData_target");
+		unmount_and_luks_close("/dev/mapper/TailsData_target");
 		exit((0xffff&err) + _ERR_RSYNC);
 	}
 	
@@ -272,30 +289,26 @@ void do_copy(std::string source_location, std::string partition) {
 	err = chmod(mount_point.c_str(), 0775);
 	if(err){
 		std::cerr << "TCPH_ERROR Could not set permissions on " << mount_point << "\nError: " << err << "\n";
-		system((_STR + "/usr/bin/udisksctl unmount --force --block-device /dev/mapper/TailsData_target").c_str());
-		luks_close_and_spinlock("/dev/mapper/TailsData_target");
+		unmount_and_luks_close("/dev/mapper/TailsData_target");
 		exit((0xffff&err) + _ERR_CHMOD);
 	}
 	
 	err = system((_STR + "/usr/bin/setfacl -b " + mount_point).c_str());
 	if(err){
 		std::cerr << "TCPH_ERROR Could not clear ACLs on " << mount_point << "\nError: " << err << "\n";
-		system((_STR + "/usr/bin/udisksctl unmount --force --block-device /dev/mapper/TailsData_target").c_str());
-		luks_close_and_spinlock("/dev/mapper/TailsData_target");
+		unmount_and_luks_close("/dev/mapper/TailsData_target");
 		exit((0xffff&err) + _ERR_SETFACL);
 	}
 
 	err = system((_STR + "/usr/bin/setfacl -m user:tails-persistence-setup:rwx " + mount_point).c_str());
 	if(err){
 		std::cerr << "TCPH_ERROR Could not set ACLs on " << mount_point << "\nError: " << err << "\n";
-		system((_STR + "/usr/bin/udisksctl unmount --force --block-device /dev/mapper/TailsData_target").c_str());
-		luks_close_and_spinlock("/dev/mapper/TailsData_target");
+		unmount_and_luks_close("/dev/mapper/TailsData_target");
 		exit((0xffff&err) + _ERR_SETFACL);
 	}
 
 	std::cout << "TCPH Unmounting and flushing data to disk\n";
-	system((_STR + "/usr/bin/udisksctl unmount --block-device /dev/mapper/TailsData_target").c_str());
-	luks_close_and_spinlock("/dev/mapper/TailsData_target");
+	unmount_and_luks_close("/dev/mapper/TailsData_target");
 	
 	std::cout << "TCPH Copy complete\n";
 }
