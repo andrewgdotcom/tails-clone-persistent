@@ -4,19 +4,19 @@ PREFIX = $(DPKG_DEST)/tails-clone-persistent
 BINPREFIX = $(PREFIX)/usr/bin
 SBINPREFIX = $(PREFIX)/usr/sbin
 
-all: src/tcp-helper
+all: src/tails-clone-persistent-helper
 
 $(BINPREFIX) $(SBINPREFIX) :
 	sudo mkdir -p $@
 
-src/tcp-helper: src/tcp-helper.c
+src/tails-clone-persistent-helper:
 	(cd src && make)
 
 install: all $(BINPREFIX) $(SBINPREFIX)
 	sudo cp bin/tails-clone-persistent $(BINPREFIX)/
 	sudo chmod 755 $(BINPREFIX)/tails-clone-persistent
-	sudo cp src/tcp-helper $(SBINPREFIX)/
-	sudo chmod 4755 $(SBINPREFIX)/tcp-helper
+	sudo cp src/tails-clone-persistent-helper $(SBINPREFIX)/
+	sudo chmod 4755 $(SBINPREFIX)/tails-clone-persistent-helper
 
 clean:
 	(cd src && make clean)
@@ -27,5 +27,5 @@ deb: install
 	sudo dpkg-deb --build $(PREFIX) $(DPKG_DEST)
 
 deb-clean: clean
-	sudo rm -rf $(BINPREFIX)/tails-clone-persistent $(SBINPREFIX)/tcp-helper
+	sudo rm -rf $(BINPREFIX)/tails-clone-persistent $(SBINPREFIX)/tails-clone-persistent-helper
 

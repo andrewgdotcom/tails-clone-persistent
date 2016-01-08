@@ -1,8 +1,10 @@
-all: tcp-helper
+CPP_ARGS=-m32
 
-tcp-helper: tcp-helper.c
-	g++ -m32 tcp-helper.c -o tcp-helper
+all: tails-clone-persistent-helper
+
+tails-clone-persistent-helper: tails-clone-persistent-helper.cpp
+	g++ $CPP_ARGS tails-clone-persistent-helper.cpp -o tails-clone-persistent-helper
 
 clean:
-	rm tcp-helper
+	rm tails-clone-persistent-helper
 
