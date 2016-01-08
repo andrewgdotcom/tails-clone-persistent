@@ -261,8 +261,8 @@ void make_partition(
 		err = system((_STR + "/bin/dd if=/dev/zero of=" + tmp_target_dev_path + " bs=128M").c_str() );
 		if(err != 256) { 
 			// yes, we WANT to fail with "no space left on device"!
-			std::cerr << "TCPH_ERROR Could not randomise free space on new crypted volume\nError: " << err << "\n";
 			luks_close_unmounted(tmp_target_dev_path);
+			std::cerr << "TCPH_ERROR Could not randomise free space on new crypted volume\nError: " << err << "\n";
 			exit((0xffff&err) + _ERR_DD);		
 		}
 	}
@@ -274,8 +274,8 @@ void make_partition(
 	std::cout << "TCPH Creating filesystem\n";
 	err = system((_STR + "/sbin/mke2fs -j -t ext4 -L TailsData " + tmp_target_dev_path).c_str() );
 	if(err) {
-		std::cerr << "TCPH_ERROR Could not create filesystem on new crypted volume\nError: " << err << "\n";
 		luks_close_unmounted(tmp_target_dev_path);
+		std::cerr << "TCPH_ERROR Could not create filesystem on new crypted volume\nError: " << err << "\n";
 		exit((0xffff&err) + _ERR_MKE2FS);
 	}
 	
@@ -306,8 +306,8 @@ void do_copy(
 
 	std::string mount_point = mount_device(tmp_target_dev_path);
 	if(mount_point.compare("")==0) {
-		std::cerr << "TCPH_ERROR Could not mount crypted volume\n";
 		luks_close_unmounted(tmp_target_dev_path);
+		std::cerr << "TCPH_ERROR Could not mount crypted volume\n";
 		exit(_INTERNAL_MOUNT);
 	}
 	if(_DEBUG) std::cerr << "Crypted volume mounted on " << mount_point << "\n";
@@ -318,8 +318,8 @@ void do_copy(
 	std::cout << "TCPH Copying files...\n";
 	err = system((_STR + "/usr/bin/rsync -a --delete --exclude=gnupg/random_seed --exclude=lost+found " + source_dir + "/ " + mount_point).c_str());
 	if(err) {
-		std::cerr << "TCPH_ERROR Error syncing files\nError: " << err << "\n";
 		unmount_and_luks_close(tmp_target_dev_path);
+		std::cerr << "TCPH_ERROR Error syncing files\nError: " << err << "\n";
 		exit((0xffff&err) + _ERR_RSYNC);
 	}
 	
@@ -329,22 +329,22 @@ void do_copy(
 	
 	err = chmod(mount_point.c_str(), 0775);
 	if(err){
-		std::cerr << "TCPH_ERROR Could not set permissions on " << mount_point << "\nError: " << err << "\n";
 		unmount_and_luks_close(tmp_target_dev_path);
+		std::cerr << "TCPH_ERROR Could not set permissions on " << mount_point << "\nError: " << err << "\n";
 		exit((0xffff&err) + _ERR_CHMOD);
 	}
 	
 	err = system((_STR + "/usr/bin/setfacl -b " + mount_point).c_str());
 	if(err){
-		std::cerr << "TCPH_ERROR Could not clear ACLs on " << mount_point << "\nError: " << err << "\n";
 		unmount_and_luks_close(tmp_target_dev_path);
+		std::cerr << "TCPH_ERROR Could not clear ACLs on " << mount_point << "\nError: " << err << "\n";
 		exit((0xffff&err) + _ERR_SETFACL);
 	}
 
 	err = system((_STR + "/usr/bin/setfacl -m user:tails-persistence-setup:rwx " + mount_point).c_str());
 	if(err){
-		std::cerr << "TCPH_ERROR Could not set ACLs on " << mount_point << "\nError: " << err << "\n";
 		unmount_and_luks_close(tmp_target_dev_path);
+		std::cerr << "TCPH_ERROR Could not set ACLs on " << mount_point << "\nError: " << err << "\n";
 		exit((0xffff&err) + _ERR_SETFACL);
 	}
 
