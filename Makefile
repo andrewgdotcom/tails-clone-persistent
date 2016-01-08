@@ -10,7 +10,9 @@ $(BINPREFIX) $(SBINPREFIX) :
 	sudo mkdir -p $@
 
 src/tails-clone-persistent-helper:
+	echo "Entering src/"
 	(cd src && make)
+	echo "Exiting src/"
 
 install: all $(BINPREFIX) $(SBINPREFIX)
 	sudo cp bin/tails-clone-persistent $(BINPREFIX)/
