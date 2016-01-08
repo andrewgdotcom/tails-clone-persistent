@@ -41,7 +41,7 @@
 
 // tails uses a 64 bit kernel, but 32bit userspace.
 // apt-get install libc6-dev-i386 g++-multilib
-// g++ -m32 TCPH_ERRORelper.c -o TCPH_ERRORelper
+// g++ -m32 tails-clone-persistent-helper.c -o tails-clone-persistent-helper
 
 // trick to force string concatenation with +
 #define _STR std::string("")
@@ -201,7 +201,7 @@ void make_partition(
 		std::string tmp_target_dev_id, 
 		std::string mode) {
 	int err;
-	std::string tmp_target_dev_path = _STR + "/dev/mapper" + tmp_target_dev_id;
+	std::string tmp_target_dev_path = _STR + "/dev/mapper/" + tmp_target_dev_id;
 
 	std::cout << "TCPH Configuring partitions\n";
 
@@ -293,7 +293,7 @@ void do_copy(
 		std::string partition, 
 		std::string tmp_target_dev_id) {
 	int err;
-	std::string tmp_target_dev_path = _STR + "/dev/mapper" + tmp_target_dev_id;
+	std::string tmp_target_dev_path = _STR + "/dev/mapper/" + tmp_target_dev_id;
 	
 	std::cout << "Unlocking crypted partition\n";
 
