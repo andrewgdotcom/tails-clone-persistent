@@ -62,9 +62,7 @@ std::string tails_free_start(std::string block_device, int *persistent_partition
 		"/sbin/parted " + block_device + " p").c_str(), "r");
 	if(!pipe) return("");
 	
-	size_t len, offset;
-	char *line, buffer[LINE_READ_BUFFER_SIZE];
-	line = (char *)malloc(LINE_READ_BUFFER_SIZE);
+	char line[LINE_READ_BUFFER_SIZE], buffer[LINE_READ_BUFFER_SIZE];
 	buffer[0]='\0';
 	
 	// fast-forward past the disk info until we find a blank line
@@ -81,10 +79,21 @@ std::string tails_free_start(std::string block_device, int *persistent_partition
 	if(fgets(line, LINE_READ_BUFFER_SIZE, pipe)) {
 		if(_DEBUG) std::cerr << "Got input: " << line;
 		std::string temp = line;
-		if((offset=temp.find("End ")) && 
-				(len=temp.find("Size ")-offset)) {
+
+		// as suggested by anonym
+		size_t end_pos = temp.find("End ");
+		size_t size_pos = temp.find("Size ");
+		if(end_pos  != std::string::npos &&
+		   size_pos != std::string::npos &&
+		   end_pos  < size_pos) {
+			size_t len = size_pos - end_pos;
+			if(len >= LINE_READ_BUFFER_SIZE){
+				// something went badly wrong
+				return _STR;
+			}
+
 			if(fgets(line, LINE_READ_BUFFER_SIZE, pipe)) {
-				strncpy(buffer, line+offset, len);
+				strncpy(buffer, line+end_pos, len);
 				// make double sure it's properly null terminated
 				buffer[len]='\0';
 				if(_DEBUG) std::cerr << "Got partition end location: " << buffer <<"\n";
@@ -103,7 +112,6 @@ std::string tails_free_start(std::string block_device, int *persistent_partition
 		}
 	}
 	fclose(pipe);
-	free(line);
 	
 	return _STR + buffer;
 }
