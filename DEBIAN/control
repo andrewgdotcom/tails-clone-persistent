@@ -1,5 +1,5 @@
 Package: tails-clone-persistent
-Version: 0.1.1~beta1
+Version: 0.1.1~beta1.1
 Section: main
 Priority: extra
 Architecture: i386
