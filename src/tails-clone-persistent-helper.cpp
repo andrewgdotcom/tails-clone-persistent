@@ -34,6 +34,11 @@
 #define _ERR_UNMOUNT 				0xc0000
 
 
+// default line buffer size
+
+#define LINE_READ_BUFFER_SIZE 1000
+
+
 // tails uses a 64 bit kernel, but 32bit userspace.
 // apt-get install libc6-dev-i386 g++-multilib
 // g++ -m32 TCPH_ERRORelper.c -o TCPH_ERRORelper
@@ -58,12 +63,12 @@ std::string tails_free_start(std::string block_device, int *persistent_partition
 	if(!pipe) return("");
 	
 	size_t len, offset;
-	char *line, buffer[100];
-	line = (char *)malloc(1000);
+	char *line, buffer[LINE_READ_BUFFER_SIZE];
+	line = (char *)malloc(LINE_READ_BUFFER_SIZE);
 	buffer[0]='\0';
 	
 	// fast-forward past the disk info until we find a blank line
-	while(fgets(line, 1000, pipe)) {
+	while(fgets(line, LINE_READ_BUFFER_SIZE, pipe)) {
 		if(strlen(line) < 3) break;
 		if(_DEBUG) std::cerr << "Skipping line: " << line;
 	}
@@ -73,23 +78,23 @@ std::string tails_free_start(std::string block_device, int *persistent_partition
 	// line and copy out what falls in the same window
 	// this should be "2621MB\s+" or similar
 	
-	if(fgets(line, 1000, pipe)) {
+	if(fgets(line, LINE_READ_BUFFER_SIZE, pipe)) {
 		if(_DEBUG) std::cerr << "Got input: " << line;
 		std::string temp = line;
 		if((offset=temp.find("End ")) && 
 				(len=temp.find("Size ")-offset)) {
-			if(fgets(line, 1000, pipe)) {
+			if(fgets(line, LINE_READ_BUFFER_SIZE, pipe)) {
 				strncpy(buffer, line+offset, len);
 				// make double sure it's properly null terminated
 				buffer[len]='\0';
 				if(_DEBUG) std::cerr << "Got partition end location: " << buffer <<"\n";
 				
 				// check to see if a second partition exists
-				if(fgets(line, 1000, pipe) && strlen(line) > 3) {
+				if(fgets(line, LINE_READ_BUFFER_SIZE, pipe) && strlen(line) > 3) {
 					*persistent_partition_exists=1;
 					
 					// sanity check that no more partitions exist
-					if(fgets(line, 1000, pipe) && strlen(line) > 3) {
+					if(fgets(line, LINE_READ_BUFFER_SIZE, pipe) && strlen(line) > 3) {
 						if(_DEBUG) std::cerr << "Found too many partitions!\n";
 						buffer[0]='\0';
 					}
@@ -98,6 +103,7 @@ std::string tails_free_start(std::string block_device, int *persistent_partition
 		}
 	}
 	fclose(pipe);
+	free(line);
 	
 	return _STR + buffer;
 }
@@ -112,8 +118,8 @@ std::string mount_device(std::string device) {
 	FILE *pipe = popen((_STR + "/usr/bin/udisksctl mount --block-device " + device).c_str(), "r");
 	if(!pipe) return("");
 
-	char line[1000];
-	while(fgets(line, 1000, pipe)) {
+	char line[LINE_READ_BUFFER_SIZE];
+	while(fgets(line, LINE_READ_BUFFER_SIZE, pipe)) {
 		if(_DEBUG) std::cerr << "Got input: " << line;
 		char *bookmark, *bit1, *bit2, *bit3;
 		// don't test the result of bit2, as it is unpredictable
