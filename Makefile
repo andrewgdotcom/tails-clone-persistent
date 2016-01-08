@@ -9,7 +9,7 @@ all: src/tails-clone-persistent-helper
 $(BINPREFIX) $(SBINPREFIX) :
 	sudo mkdir -p $@
 
-src/tails-clone-persistent-helper:
+src/tails-clone-persistent-helper: src/tails-clone-persistent-helper.cpp
 	echo "Entering src/"
 	(cd src && make)
 	echo "Exiting src/"
