@@ -513,20 +513,20 @@ sub clone_to_tails() {
 
 		# TODO: assign $block_device from tails-installer instead of
 		# bothering the user twice
-		$block_device = &choose_block_device($prompt, $except);
+		$block_device = &choose_block_device('SELECT TAILS DISK TO COPY TO', $tails_partition);
 
 	} elsif(!$block_device) {
 		
 		# the user didn't (couldn't?) choose a tails target
 		# and install not forced, so we must ask permission to proceed
 		
-		make_failure("No target disk") unless &make_confirm(
+		&make_failure("No target disk") unless &make_confirm(
 q[No tails drive selected. Insert a new USB drive (minimum 4GB)]);
 		system($tails_installer, '-u', '-n', '--clone', '-P', '-m', '-x');
 
 		# TODO: assign $block_device from tails-installer instead of
 		# bothering the user twice (see above)
-		$block_device = &choose_block_device($prompt, $except);
+		$block_device = &choose_block_device('SELECT TAILS DISK TO COPY TO', $tails_partition);
 
 	} else {
 		 # install not forced and target selected
@@ -535,7 +535,7 @@ q[No tails drive selected. Insert a new USB drive (minimum 4GB)]);
 	}
 	
 	# should never get this far, but check anyway
-	make_failure("No target disk") unless $block_device;
+	&make_failure("No target disk") unless $block_device;
 
 	my $passphrase;
 	my $partition_mode='new';
