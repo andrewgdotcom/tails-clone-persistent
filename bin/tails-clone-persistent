@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 my $program = 'tails-clone-persistent';
-my $version = '0.1';
+my $version = '0.2';
 
 #######################################################################
 #
@@ -18,6 +18,7 @@ use warnings;
 
 use Expect;
 use Gtk2 '-init';
+use Bytes::Random::Secure qw(random_bytes_base64);
 
 #use Linux::ACL;		# would be nice but it's not packaged
 
@@ -25,43 +26,62 @@ use Gtk2 '-init';
 $ENV{'PATH'} = '/bin:/usr/bin:/sbin:/usr/sbin';
 
 my $expect_timeout = 3600; # Data flushing can be slooow
-my $persist_location = '/live/persistence/TailsData_unlocked';
-my $helper_utility = '/usr/sbin/tails-clone-persistent-helper';
-
-# for tails v2.x
 my $tails_installer = '/usr/lib/tails_installer/tails-installer';
 
-# for tails v1.x
-my $v1_tails_installer = '/usr/bin/liveusb-creator';
+# to be removed...
+my $helper_utility = '/usr/sbin/tails-clone-persistent-helper';
 
 
 #############################
 # Process command line args #
 #############################
 
-my %CMD_OPTIONS;
+# default arguments
+my %CMD_OPTIONS = (
+	'source' => '/live/persistence/TailsData_unlocked',
+	'target' => undef, # will prompt for target drive
+	'deniable' => undef, # fast operation
+	'decoy' => undef,
+	'install' => undef, # will prompt iff tails not installed on target
+	'debug' => undef,
+	'help' => undef,
+);
 
 sub parse_options {
   while($ARGV[0] and $ARGV[0]=~/^--/) {
 	my $option = shift(@ARGV);
 	my $value = 1;
 	$option =~ s/^--//;
-	if($option =~ /=/) {
-		($option, $value) = split('=', $option);
+	if($option =~ /^([^=]+)=(.*)$/) {
+		($option, $value) = ($1, $2);
 	}
-	$CMD_OPTIONS{$option} = $value;
+	# allow for "no-OPTION" to unset defaults
+	if($option =~ s/^no-//){
+		$CMD_OPTIONS{$option} = undef;
+	} else {
+		$CMD_OPTIONS{$option} = $value;
+	}
   }
 } 
 
 sub option_help {
 	print qq[This is ${program} v${version}
-	 
+
+This tool clones an existing persistent tails partition to a target
+drive, creating a new persistent partition on that drive if necessary,
+and clone-installing the running tails if necessary.
+
 It takes the following options:
 
---help     This help
---debug    Debugging information
---skel=DIR Copy the contents of DIR instead
---pull     Clone another persistent partition to this one (needs root)
+--source=DIR    Location of data to be copied
+  --no-source   Copy nothing; create target partition only
+--target=DEVICE Drive (NOT partition) to be written to (e.g. /dev/sdb)
+--deniable      Make a deniable partition by zeroing target (SLOW)
+--decoy         Make a decoy partition by randomizing target
+                 (implies --deniable --no-source)
+--install       Clone-install tails on the target without prompting
+--debug         Enable debugging information
+--help          This help
 
 ];
 }
@@ -384,7 +404,7 @@ sub get_tails_partition {
 	my $tails_partition;
 	my $pipe;
 	
-	open($pipe, '/bin/mount|') 
+	open($pipe, '-|', '/bin/mount') 
 		or &make_failure("Failed to read mount points. Aborting.");
 	while(<$pipe>) {
 		print $_ if $CMD_OPTIONS{'debug'};
@@ -403,7 +423,7 @@ sub choose_block_device {
 	my @block_devices;
 	my $pipe;
 
-	open($pipe, '/sbin/blkid |');
+	open($pipe, '-|', '/sbin/blkid');
 	while(<$pipe>) {
 		print $_ if $CMD_OPTIONS{'debug'};
 		if(m!^([/[:alnum:]._-]+): LABEL="Tails" UUID="[a-fA-F0-9-]+" TYPE="vfat"!) {
@@ -417,14 +437,14 @@ sub choose_block_device {
 	close $pipe;
 	
 	if(@block_devices) {
+		# Hooray, we found some likely targets. Let the user choose one.
+		# (NB the user can click cancel if she doesn't like any of them
+		# however the dialog currently doesn't make this clear)
 		# TODO: give user better info in menu, e.g. make and model?
 		return &make_submenu($prompt, @block_devices);
-	} elsif(&make_confirm(
-		q[No other tails drives found. Do you want to create a new one?])
-	) {
-		&make_confirm(qq[Insert a new USB drive (minimum 4GB)]);
-		system($tails_installer, '-u', '-n', '--clone', '-P', '-m', '-x');
-		return &choose_block_device($prompt, $except);
+	} else {
+		# otherwise return false and let the caller deal with it
+		return "";
 	}
 }
 
@@ -434,7 +454,7 @@ sub mount_device {
 	my $pipe;
 	
 	print qq[Mounting crypted partition...\n] if $CMD_OPTIONS{'debug'};
-	open($pipe, "/usr/bin/udisksctl mount --block-device ${block_device}|")
+	open($pipe, '-|', '/usr/bin/udisksctl', 'mount', '--block-device', ${block_device})
 		or &make_failure("Could not mount disk ${block_device}. Aborting.");
 	while(<$pipe>) {
 		print $_ if $CMD_OPTIONS{'debug'};
@@ -452,45 +472,149 @@ sub mount_device {
 
 
 sub clone_to_tails() {	
-	my $source_location_unsafe = shift;
-	my $tails_partition = &get_tails_partition();
-	my ($partition_mode, $passphrase);
 	
-	# sanitise input
+	###############
+	# Preparation #
+	###############
+	
+	# sanitise input - forbid globs, escapes, special quotes
 	&make_failure("Unsafe characters in source path. Aborting.") unless 
-		$source_location_unsafe =~ m!^([[:alnum:][:digit:]/_.,+=-]*)$!;
+		$CMD_OPTIONS{'source'} =~ m!^([^*\\'`"]*)$!;
 	my $source_location = $1;
 	
+	my $tails_partition = &get_tails_partition();
 	&make_failure("Could not determine running Tails partition. Aborting.") unless $tails_partition;
 	print "Tails volume found on $tails_partition\n" if $CMD_OPTIONS{'debug'};
 
-	my $block_device = &choose_block_device('SELECT TAILS DISK TO COPY TO', $tails_partition);
-	return unless $block_device;
-	
-	# if a persistent partition already exists on the target drive
-	if(-b "${block_device}2") {
-		return unless &make_confirm("Update the existing persistent data on ${block_device}?");
+	# Okay, kid. This is where it gets complicated.
 
-		my $reuse = &make_reuse(
+	my $block_device = $CMD_OPTIONS{'target'};
+	unless($block_device) {
+		# No target device supplied on the command line; prompt user
+		# Note that this subroutine only actually prompts the user iff
+		# it can find a likely target, otherwise it returns false.
+		# We'll deal with that in a bit.
+		$block_device = &choose_block_device('SELECT TAILS DISK TO COPY TO', $tails_partition);
+	}
+	
+	if($CMD_OPTIONS{'install'}) {
+		# install forced by command line. Continue without prompting.
+		
+		if($block_device) {
+			# we are overwriting an existing tails drive
+			# force use of the block device we already selected so we
+			# don't prompt the user twice
+			system($tails_installer, '-u', '-n', '--clone', '-P', '-m', '-x', 
+				'-f', $block_device);
+		} else {
+			# need to create a new tails drive
+			system($tails_installer, '-u', '-n', '--clone', '-P', '-m', '-x');
+		}
+
+		# TODO: assign $block_device from tails-installer instead of
+		# bothering the user twice
+		$block_device = &choose_block_device($prompt, $except);
+
+	} elsif(!$block_device) {
+		
+		# the user didn't (couldn't?) choose a tails target
+		# and install not forced, so we must ask permission to proceed
+		
+		make_failure("No target disk") unless &make_confirm(
+q[No tails drive selected. Insert a new USB drive (minimum 4GB)]);
+		system($tails_installer, '-u', '-n', '--clone', '-P', '-m', '-x');
+
+		# TODO: assign $block_device from tails-installer instead of
+		# bothering the user twice (see above)
+		$block_device = &choose_block_device($prompt, $except);
+
+	} else {
+		 # install not forced and target selected
+		 # we should sanity check that a command-line provided target
+		 # actually exists
+	}
+	
+	# should never get this far, but check anyway
+	make_failure("No target disk") unless $block_device;
+
+	my $passphrase;
+	my $partition_mode='new';
+	if($CMD_OPTIONS{'deniable'}) {
+		
+		$partition_mode='deniable';
+
+	} elsif($CMD_OPTIONS{'decoy'}) {
+
+		# Generate a cryptographically-secure random passphrase, but
+		# otherwise behave as if the user specified "deniable".
+		#
+		# 57 bytes of base64 should be plenty. 57 bytes (= 76 chars)
+		# is the line length of base64 - any more will incur padding.
+		# There's nothing else special about "57".
+		#
+		# NB by default, Bytes::Random::Secure seeds from 256 bits
+		# of /dev/random (blocking). This is appropriate for a
+		# graphical box such as tails, but only gives us 32 bytes of
+		# "true" randomness.
+		#
+		# We could just slurp those 32 bytes straight out of /dev/random
+		# but running them through a CSPRNG first is never a bad idea.
+		# 
+		# NBNB this is utter, utter overkill. Nobody's real passphrase
+		# is going to be anywhere near as "random" as this one, so if an
+		# adversary were able to detect a real partition filled mostly
+		# of crypted zeros in a sea of our "perfectly random" decoys,
+		# it is most likely NOT going to be by fingerprinting our PRNG.
+		
+		$passphrase = random_bytes_base64(57);
+		print "Generated randomness:\n", $passphrase, "\n" if $CMD_OPTIONS{'debug'};
+		
+		# We generate the decoy filesystem through the same method as
+		# we make a deniable one, in order to minimise the chances that
+		# errors in our logic could be used to fingerprint our actions.
+
+		$partition_mode='deniable';
+		
+		# BUT... don't copy any data, because that a) wastes time and
+		# b) wears out our target drive for no good reason.
+		#
+		# The only reason we'd go to such lengths as copying disposable
+		# data over the zeroed decoy partition would be if an adversary
+		# could determine the write times of the blocks on the target
+		# medium. And if that were true, we'd have much worse problems.
+		
+		$source_location = "";
+
+	} else {
+
+		# if a persistent partition already exists on the target drive
+		if(-b "${block_device}2") {
+			return unless &make_confirm("Update the existing persistent data on ${block_device}?");
+
+			my $reuse = &make_reuse(
 q[If you know the passphrase of the target partition, you can reuse it. 
 This is faster, and could (slightly) extend the life of your disk.
 
 Otherwise, you should delete it and make one with a new passphrase.
 ]);
 
-		if($reuse){
-			$partition_mode='existing';
-			$passphrase = &secure_input('Please unlock the target disk');
-		}
-	} 
+			if($reuse){
+				$partition_mode='existing';
+				$passphrase = &secure_input('Please unlock the target disk');
+			}
+		} 
+	}
 	
 	# if no passphrase given (incl. if there was no existing partition)
 	unless($passphrase) {
-		$partition_mode='new';
 		$passphrase = &ask_passphrase;
 		return unless $passphrase;
 	}
 	
+	###############
+	# Ready to go #
+	###############
+
 	# Now call expect to handle the setuid helper
 	&make_progress('Copying data...');
 	
@@ -568,64 +692,17 @@ Otherwise, you should delete it and make one with a new passphrase.
 }
 
 
-sub clone_from_tails {
-	my $tails_partition = &get_tails_partition();
-	&make_failure("Could not determine running Tails partition. Aborting.") unless $tails_partition;
-	print "Tails volume found on $tails_partition\n" if $CMD_OPTIONS{'debug'};
-
-	my $block_device = &choose_block_device('SELECT TAILS DISK TO COPY FROM', $tails_partition);
-	return unless $block_device;
-
-	return unless &make_confirm("Overwrite your running Tails persistent volume using ${block_device}?");
-
-	# don't use setuid helper for pull
-	# a) safer to require sudo to overwrite the running configuration
-	# b) we only need 'pull' in rare edge cases, if ever
-	
-	my $partition = "${block_device}2";
-	system('/sbin/cryptsetup', 'luksOpen', $partition, 'TailsData_source');
-	#will prompt for a password
-	
-	my $mount_point = &mount_device('/dev/mapper/TailsData_source');
-	&make_failure("Could not mount disk") unless $mount_point;
-	print "Crypted volume mounted on $mount_point\n" if $CMD_OPTIONS{'debug'};
-
-	print qq[Copying files...];
-	system('/usr/bin/rsync', '-a', '--delete', "--exclude=gnupg/random_seed", 
-		"${mount_point}/", $persist_location);
-	print qq[done\n];
-
-	system('/usr/bin/udisksctl', 'unmount', '--block-device', '/dev/mapper/TailsData_source');
-	do {
-		&make_progress('Flushing data to disk...');
-	} until system('/sbin/cryptsetup', 'luksClose', 'TailsData_source')==0;
-	&make_success('Copy complete');
-}
-
-
 #####################################
 
 
 sub main {
 	&parse_options;
 	&graphic_window_init;
-	
-	if(-x $v1_tails_installer) {
-		# handle changing locations/names of the tails installer
-		$tails_installer = $v1_tails_installer
-	}
-	
+		
 	if($CMD_OPTIONS{'help'}) {
 		&option_help;
-#	} elsif($CMD_OPTIONS{'pull'}) {
-#		if($> != 0) {
-#			&make_failure("Only root can overwrite running config; try again using sudo.");
-#		}
-#		&clone_from_tails;
-	} elsif($CMD_OPTIONS{'skel'}) {
-		&clone_to_tails($CMD_OPTIONS{'skel'});
 	} else {
-		&clone_to_tails($persist_location);
+		&clone_to_tails;
 	}
 }
 
