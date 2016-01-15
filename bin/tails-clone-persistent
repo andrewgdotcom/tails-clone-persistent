@@ -483,16 +483,18 @@ sub clone_to_tails() {
 	my $source_location = $1;
 	
 	my $tails_partition = &get_tails_partition();
-	&make_failure("Could not determine running Tails partition. Aborting.") unless $tails_partition;
+	&make_failure("Could not determine running Tails partition. Aborting.") 
+		unless $tails_partition;
 	print "Tails volume found on $tails_partition\n" if $CMD_OPTIONS{'debug'};
 
 	# Okay, kid. This is where it gets complicated.
 
 	my $block_device = $CMD_OPTIONS{'target'};
-	# TODO: we should sanity check that a command-line provided target
-	# actually exists before continuing
 		 
-	unless($block_device) {
+	if($block_device) {
+		&make_failure("${block_device} is not a valid block device") 
+			unless -b $block_device;
+	} else {
 		# No target device supplied on the command line; ask user.
 		# Note that this subroutine only actually prompts the user iff
 		# it can find a likely target, otherwise it returns false.
