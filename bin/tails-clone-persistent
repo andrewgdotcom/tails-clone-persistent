@@ -6,9 +6,10 @@ my $version = '0.2';
 #
 # tails-clone-persistent
 #
-# We call /usr/sbin/tcp-helper to do the dirty work. It is setuid
-# root (in order to create filesystems and set permissions) but has
-# no user interaction or intelligence. That's all safely in here.
+# We call &tails_clone_persistent_helper.pl to do our dirty work. It 
+# has no user interaction or intelligence. That's all in here.
+# This is because we use an expect() wrapper to safely provide 
+# passphrases to the luks routines.
 #
 #######################################################################
 
@@ -29,7 +30,7 @@ my $expect_timeout = 3600; # Data flushing can be slooow
 my $tails_installer = '/usr/lib/tails_installer/tails-installer';
 
 # to be removed...
-my $helper_utility = '/usr/sbin/tails-clone-persistent-helper';
+my $helper_utility = '/usr/sbin/tails-clone-persistent-helper.pl';
 
 
 #############################
