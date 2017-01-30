@@ -149,7 +149,7 @@ sub make_partition() {
 	print "TCPH Configuring partitions\n";
 
 	# information flag
-	my ($start, $persistent_partition_exists) = &tails_free_start(block_device);
+	my ($start, $persistent_partition_exists) = &tails_free_start($block_device);
 	if($start == "") {
 		print STDOUT "TCPH_ERROR Could not detect end of tails primary partition\n";
 		exit($_INTERNAL_PARTED_UNPARSED);
@@ -233,7 +233,7 @@ sub make_partition() {
 sub do_copy() {
 		my $source_dir = shift;
 		my $partition = shift;
-		my $tmp_target_dev_id = shift
+		my $tmp_target_dev_id = shift;
 	my $err;
 	my $tmp_target_dev_path = "/dev/mapper/$tmp_target_dev_id";
 	
@@ -247,7 +247,7 @@ sub do_copy() {
 	}
 
 	my $mount_point = &mount_device($tmp_target_dev_path);
-	if(mount_point=="") {
+	if($mount_point=="") {
 		&luks_close_unmounted($tmp_target_dev_path);
 		warn "TCPH_ERROR Could not mount crypted volume\n";
 		exit($_INTERNAL_MOUNT);
@@ -309,8 +309,8 @@ sub tails_clone_persistent_helper() {
 	
 	$_DEBUG and warn "Args: $\n";
 	# sanitize our input
-	if($source_dir =~ /[^A-Za-z0-9.,=+_/-]/ ||
-		$block_device =~ /[^A-Za-z0-9.,=+_/-]) {
+	if($source_dir =~ m![^A-Za-z0-9.,=+_/-]! ||
+		$block_device =~ m![^A-Za-z0-9.,=+_/-]!) {
 		print "Unsafe characters detected in filename. Aborting\n";
 		exit($_INTERNAL_SANITATION);
 	}
@@ -321,11 +321,11 @@ sub tails_clone_persistent_helper() {
 	# should probably randomise this to prevent clashing
 	my $tmp_target_dev_id = "TailsData_target";
 
-	if(mode=="new" || mode=="deniable") {
+	if($mode=="new" || $mode=="deniable") {
 		&make_partition($block_device, $partition, $tmp_target_dev_id, $mode);
 	}
 	# if we are told to copy nothing, quit early
-	if(source_dir=="") {
+	if($source_dir=="") {
 		print "TCPH Not copying any files, as requested\n";
 	} else {
 		&do_copy($source_dir, $partition, $tmp_target_dev_id);
@@ -337,7 +337,7 @@ sub tails_clone_persistent_helper() {
 
 
 if($ARGV != 4 || $ARGV[3] !~ /^(existing|new|deniable)$/ ){
-	warn <<EOF
+	warn <<EOF;
 Usage: &tails_clone_persistent_helper.pl(SOURCE_DIR BLOCK_DEVICE MODE)
 
 "rsync --delete" the contents of SOURCE_DIR to a new or existing
