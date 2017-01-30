@@ -338,7 +338,7 @@ sub tails_clone_persistent_helper() {
 
 if(@ARGV != 4 || $ARGV[3] !~ /^(existing|new|deniable)$/ ){
 	warn <<EOF;
-Usage: &tails_clone_persistent_helper.pl(SOURCE_DIR BLOCK_DEVICE MODE)
+Usage: tails_clone_persistent_helper.pl SOURCE_DIR BLOCK_DEVICE MODE
 
 "rsync --delete" the contents of SOURCE_DIR to a new or existing
 persistent partition on the tails drive BLOCK_DEVICE
