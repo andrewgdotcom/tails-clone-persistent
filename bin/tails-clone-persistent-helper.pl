@@ -303,7 +303,7 @@ sub tails_clone_persistent_helper() {
 	my $block_device = shift;
 	my $mode = shift;
 		
-	if(getenv("TCP_HELPER_DEBUG")) {
+	if(%ENV{"TCP_HELPER_DEBUG"}) {
 		$_DEBUG=1;
 	}
 	
