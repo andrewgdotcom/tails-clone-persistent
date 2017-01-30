@@ -5,6 +5,9 @@ my $version = '0.2';
 use strict;
 use warnings;
 
+# Secure our path
+$ENV{'PATH'} = '/bin:/usr/bin:/sbin:/usr/sbin';
+
 # errors < 65536 are internal
 
 my $_INTERNAL_USAGE 			=	0x0001;
@@ -83,7 +86,7 @@ sub mount_device() {
 	}
 	close(PIPE);
 	
-	if($mount_point=="") {
+	if($mount_point eq "") {
 		print "Could not mount filesystem!\n";
 		return("");
 	}
@@ -150,7 +153,7 @@ sub make_partition() {
 
 	# information flag
 	my ($start, $persistent_partition_exists) = &tails_free_start($block_device);
-	if($start == "") {
+	if($start eq "") {
 		print STDOUT "TCPH_ERROR Could not detect end of tails primary partition\n";
 		exit($_INTERNAL_PARTED_UNPARSED);
 	}
@@ -195,7 +198,7 @@ sub make_partition() {
 	}
 	
 	# plausible deniability
-	if($mode == "deniable") {
+	if($mode eq "deniable") {
 		print "TCPH Randomising free space for plausible deniability. This may take a while.\n";
 		# "a while" =~ 5-10 mins/GB on crappy hardware ;-)
 		
@@ -247,7 +250,7 @@ sub do_copy() {
 	}
 
 	my $mount_point = &mount_device($tmp_target_dev_path);
-	if($mount_point=="") {
+	if($mount_point eq "") {
 		&luks_close_unmounted($tmp_target_dev_path);
 		warn "TCPH_ERROR Could not mount crypted volume\n";
 		exit($_INTERNAL_MOUNT);
@@ -303,7 +306,7 @@ sub tails_clone_persistent_helper() {
 	my $block_device = shift;
 	my $mode = shift;
 		
-	if(%ENV{"TCP_HELPER_DEBUG"}) {
+	if($ENV{"TCP_HELPER_DEBUG"}) {
 		$_DEBUG=1;
 	}
 	
@@ -321,11 +324,11 @@ sub tails_clone_persistent_helper() {
 	# should probably randomise this to prevent clashing
 	my $tmp_target_dev_id = "TailsData_target";
 
-	if($mode=="new" || $mode=="deniable") {
+	if($mode eq "new" || $mode eq "deniable") {
 		&make_partition($block_device, $partition, $tmp_target_dev_id, $mode);
 	}
 	# if we are told to copy nothing, quit early
-	if($source_dir=="") {
+	if($source_dir eq "") {
 		print "TCPH Not copying any files, as requested\n";
 	} else {
 		&do_copy($source_dir, $partition, $tmp_target_dev_id);
