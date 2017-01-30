@@ -2,11 +2,10 @@ DPKG_DEST = ~/build
 PREFIX = $(DPKG_DEST)/tails-clone-persistent
 
 BINPREFIX = $(PREFIX)/usr/bin
-SBINPREFIX = $(PREFIX)/usr/sbin
 
 all: src/tails-clone-persistent-helper
 
-$(BINPREFIX) $(SBINPREFIX) :
+$(BINPREFIX) :
 	sudo mkdir -p $@
 
 src/tails-clone-persistent-helper: src/tails-clone-persistent-helper.cpp
@@ -14,11 +13,10 @@ src/tails-clone-persistent-helper: src/tails-clone-persistent-helper.cpp
 	(cd src && make)
 	echo "Exiting src/"
 
-install: all $(BINPREFIX) $(SBINPREFIX)
-	sudo cp bin/tails-clone-persistent $(BINPREFIX)/
-	sudo chmod 755 $(BINPREFIX)/tails-clone-persistent
-	sudo cp src/tails-clone-persistent-helper $(SBINPREFIX)/
-	sudo chmod 4755 $(SBINPREFIX)/tails-clone-persistent-helper
+install: all $(BINPREFIX)
+	sudo cp bin/tails-clone-persistent bin/tails-clone-persistent-helper.pl src/tails-clone-persistent-helper $(BINPREFIX)/
+	sudo chmod 755 $(BINPREFIX)/tails-clone-persistent $(BINPREFIX)/tails-clone-persistent-helper.pl
+	sudo chmod 4755 $(BINPREFIX)/tails-clone-persistent-helper
 
 clean:
 	(cd src && make clean)
@@ -29,5 +27,5 @@ deb: install
 	sudo dpkg-deb --build $(PREFIX) $(DPKG_DEST)
 
 deb-clean: clean
-	sudo rm -rf $(BINPREFIX)/tails-clone-persistent $(SBINPREFIX)/tails-clone-persistent-helper
+	sudo rm -rf $(BINPREFIX)/tails-clone-persistent*
 
