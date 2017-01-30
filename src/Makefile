@@ -7,4 +7,3 @@ tails-clone-persistent-helper: tails-clone-persistent-helper.cpp
 
 clean:
 	rm tails-clone-persistent-helper
-
