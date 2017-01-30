@@ -272,7 +272,7 @@ sub do_copy() {
 	# after rsync mucks them about - otherwise tails will barf. See
 	# https://tails.boum.org/contribute/design/persistence/#security
 	
-	$err = chmod($mount_point, 0775);
+	$err = chmod(0775, $mount_point);
 	if($err){
 		&unmount_and_luks_close($tmp_target_dev_path);
 		warn "TCPH_ERROR Could not set permissions on $mount_point\nError: $err\n";
