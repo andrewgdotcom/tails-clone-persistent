@@ -1,5 +1,4 @@
 #!/bin/bash
 set -e
 
-chmod 4755 /usr/sbin/tails-clone-persistent-helper
-
+chmod 4755 /usr/bin/tails-clone-persistent-helper
