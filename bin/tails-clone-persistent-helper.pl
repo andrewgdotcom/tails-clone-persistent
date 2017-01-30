@@ -40,7 +40,7 @@ sub tails_free_start() {
 	my $block_device = shift;
 
 	my $persistent_partition_exists=0;
-	my buffer="";
+	my $buffer="";
 	
 	open(PIPE, "-|", "/sbin/parted $block_device p") 
 		|| return ("", 0);
@@ -50,7 +50,7 @@ sub tails_free_start() {
 		if(/^\s*1\s+[[:digit:]]+[kMGT]?B\s+([[:digit:]]+[kMGT]+B)\s+.*$/) {
 			# Matched partition "1"
 			$buffer=$1;
-			if($_DEBUG) print STDERR "Got partition end location: $buffer\n";
+			$_DEBUG and warn "Got partition end location: $buffer\n";
 		} elsif(/^\s*2\s+[[:digit:]]+[kMGT]?B\s+([[:digit:]]+[kMGT]+B)\s+.*$/) {
 			# Matched partition "2"
 			$persistent_partition_exists=1;
@@ -91,7 +91,7 @@ sub mount_device() {
 	# Test to see if udisksctl has appended a full stop to the output
 	# and delete it. Some versions do, some don't.
 	if($mount_point =~ /\.$/) {
-		if($_DEBUG) print STDERR "Truncating trailing punctuation\n";
+		$_DEBUG and warn "Truncating trailing punctuation\n";
 		chop $mount_point;
 	}
 	return($mount_point);
@@ -109,7 +109,7 @@ sub luks_close_unmounted() {
 		$err = system("/sbin/cryptsetup luksClose $crypted_block_device");
 	} while( $err == 5 );
 	if($err) {
-		print STDERR "TCPH_ERROR Failed to lock partition!\nError: $err\n";
+		warn "TCPH_ERROR Failed to lock partition!\nError: $err\n";
 		exit((0xffff&$err) + $_ERR_LUKSCLOSE);
 	}
 }
@@ -119,7 +119,7 @@ sub unmount_and_luks_close() {
 	my $err;
 	$err = system("/usr/bin/udisksctl unmount --force --block-device $crypted_block_device");
 	if($err) {
-		print STDERR "TCPH_ERROR Failed to unmount partition!\nError: $err\n";
+		warn "TCPH_ERROR Failed to unmount partition!\nError: $err\n";
 		exit((0xffff&$err) + $_ERR_UNMOUNT);
 	}
 	&luks_close_unmounted($crypted_block_device);
@@ -149,7 +149,6 @@ sub make_partition() {
 	print "TCPH Configuring partitions\n";
 
 	# information flag
-	my $persistent_partition_exists = 0;
 	my ($start, $persistent_partition_exists) = &tails_free_start(block_device);
 	if($start == "") {
 		print STDOUT "TCPH_ERROR Could not detect end of tails primary partition\n";
@@ -159,39 +158,39 @@ sub make_partition() {
 	# if >2 partitions, tails_free_start would have aborted above
 	# so safe to assume we need to trash one partition at most
 	if($persistent_partition_exists) {
-		if($_DEBUG) print STDERR "Deleting old second partition\n";
+		$_DEBUG and warn "Deleting old second partition\n";
 		$err = system("/sbin/parted -s $block_device rm 2");	
 		if($err) {
-			print STDERR "TCPH_ERROR Could not delete old persistent partition\nError: $err\n";
+			warn "TCPH_ERROR Could not delete old persistent partition\nError: $err\n";
 			exit((0xffff&$err) + $_ERR_PARTED_RM);
 		}
 	}
 
-	if($_DEBUG) print STDERR "Making new secondary partition\n";
+	$_DEBUG and warn "Making new secondary partition\n";
 	$err = system("/sbin/parted -s $block_device mkpart primary $start 100%");
 	if($err) {
-		print STDERR "TCPH_ERROR Could not create new partition\nError: $err\n";
+		warn "TCPH_ERROR Could not create new partition\nError: $err\n";
 		exit((0xffff&$err) + $_ERR_PARTED_MKPART);
 	}
 
-	if($_DEBUG) print STDERR "Renaming partition label\n";
+	$_DEBUG and warn "Renaming partition label\n";
 	$err = system("/sbin/parted -s $block_device name 2 TailsData");
 	if($err) {
-		print STDERR "TCPH_ERROR Could not rename new partition\nError: $err\n";
+		warn "TCPH_ERROR Could not rename new partition\nError: $err\n";
 		exit((0xffff&$err) + $_ERR_PARTED_NAME);
 	}
 
 	print "TCPH Initialising new crypted volume\n";
 	$err = system("/sbin/cryptsetup luksFormat $partition");
 	if($err) {
-		print STDERR "TCPH_ERROR Could not initialise crypted volume\nError: $err\n";
+		warn "TCPH_ERROR Could not initialise crypted volume\nError: $err\n";
 		exit((0xffff&$err) + $_ERR_LUKSFORMAT);
 	}
 
-	if($_DEBUG) print STDERR "Unlocking new crypted volume\n";
+	$_DEBUG and warn "Unlocking new crypted volume\n";
 	$err = system("/sbin/cryptsetup luksOpen $partition $tmp_target_dev_id");
 	if($err) {
-		print STDERR "TCPH_ERROR Could not unlock new crypted volume\nError: $err\n";
+		warn "TCPH_ERROR Could not unlock new crypted volume\nError: $err\n";
 		exit((0xffff&$err) + $_ERR_LUKSOPEN);
 	}
 	
@@ -205,7 +204,7 @@ sub make_partition() {
 		if($err != 256) { 
 			# yes, we WANT to fail with "no space left on device"!
 			&luks_close_unmounted($tmp_target_dev_path);
-			print STDERR "TCPH_ERROR Could not randomise free space on new crypted volume\nError: $err\n";
+			warn "TCPH_ERROR Could not randomise free space on new crypted volume\nError: $err\n";
 			exit((0xffff&$err) + $_ERR_DD);		
 		}
 	}
@@ -218,7 +217,7 @@ sub make_partition() {
 	$err = system("/sbin/mke2fs -j -t ext4 -L TailsData $tmp_target_dev_path");
 	if($err) {
 		&luks_close_unmounted($tmp_target_dev_path);
-		print STDERR "TCPH_ERROR Could not create filesystem on new crypted volume\nError: $err\n";
+		warn "TCPH_ERROR Could not create filesystem on new crypted volume\nError: $err\n";
 		exit((0xffff&$err) + $_ERR_MKE2FS);
 	}
 	
@@ -243,17 +242,17 @@ sub do_copy() {
 	# (re)open the crypted device
 	$err = system("/sbin/cryptsetup luksOpen $partition $tmp_target_dev_id");
 	if($err) {
-		print STDERR "TCPH_ERROR Could not unlock crypted volume\nError: $err\n";
+		warn "TCPH_ERROR Could not unlock crypted volume\nError: $err\n";
 		exit((0xffff&$err) + $_ERR_LUKSOPEN);
 	}
 
 	my $mount_point = &mount_device($tmp_target_dev_path);
 	if(mount_point=="") {
 		&luks_close_unmounted($tmp_target_dev_path);
-		print STDERR "TCPH_ERROR Could not mount crypted volume\n";
+		warn "TCPH_ERROR Could not mount crypted volume\n";
 		exit($_INTERNAL_MOUNT);
 	}
-	if($_DEBUG) print STDERR "Crypted volume mounted on $mount_point\n";
+	$_DEBUG and warn "Crypted volume mounted on $mount_point\n";
 
 		
 	# run rsync to copy files. Note that --delete does NOT delete
@@ -262,7 +261,7 @@ sub do_copy() {
 	$err = system("/usr/bin/rsync -a --delete --exclude=gnupg/random_seed --exclude=lost+found $source_dir/ $mount_point");
 	if($err) {
 		&unmount_and_luks_close($tmp_target_dev_path);
-		print STDERR "TCPH_ERROR Error syncing files\nError: $err\n";
+		warn "TCPH_ERROR Error syncing files\nError: $err\n";
 		exit((0xffff&$err) + $_ERR_RSYNC);
 	}
 	
@@ -273,21 +272,21 @@ sub do_copy() {
 	$err = chmod($mount_point, 0775);
 	if($err){
 		&unmount_and_luks_close($tmp_target_dev_path);
-		print STDERR "TCPH_ERROR Could not set permissions on $mount_point\nError: $err\n";
+		warn "TCPH_ERROR Could not set permissions on $mount_point\nError: $err\n";
 		exit((0xffff&$err) + $_ERR_CHMOD);
 	}
 	
 	$err = system("/usr/bin/setfacl -b $mount_point");
 	if($err){
 		&unmount_and_luks_close($tmp_target_dev_path);
-		print STDERR "TCPH_ERROR Could not clear ACLs on $mount_point\nError: $err\n";
+		warn "TCPH_ERROR Could not clear ACLs on $mount_point\nError: $err\n";
 		exit((0xffff&$err) + $_ERR_SETFACL);
 	}
 
 	$err = system("/usr/bin/setfacl -m user:tails-persistence-setup:rwx $mount_point");
 	if($err){
 		&unmount_and_luks_close($tmp_target_dev_path);
-		print STDERR "TCPH_ERROR Could not set ACLs on $mount_point\nError: $err\n";
+		warn "TCPH_ERROR Could not set ACLs on $mount_point\nError: $err\n";
 		exit((0xffff&$err) + $_ERR_SETFACL);
 	}
 
@@ -308,7 +307,7 @@ sub tails_clone_persistent_helper() {
 		$_DEBUG=1;
 	}
 	
-	if($_DEBUG) print STDERR "Args: $\n";
+	$_DEBUG and warn "Args: $\n";
 	# sanitize our input
 	if($source_dir =~ /[^A-Za-z0-9.,=+_/-]/ ||
 		$block_device =~ /[^A-Za-z0-9.,=+_/-]) {
@@ -338,7 +337,7 @@ sub tails_clone_persistent_helper() {
 
 
 if($ARGV != 4 || $ARGV[3] !~ /^(existing|new|deniable)$/ ){
-	print STDERR <<EOF
+	warn <<EOF
 Usage: &tails_clone_persistent_helper.pl(SOURCE_DIR BLOCK_DEVICE MODE)
 
 "rsync --delete" the contents of SOURCE_DIR to a new or existing
