@@ -336,7 +336,7 @@ sub tails_clone_persistent_helper() {
 # START
 
 
-if($ARGV != 4 || $ARGV[3] !~ /^(existing|new|deniable)$/ ){
+if(@ARGV != 4 || $ARGV[3] !~ /^(existing|new|deniable)$/ ){
 	warn <<EOF;
 Usage: &tails_clone_persistent_helper.pl(SOURCE_DIR BLOCK_DEVICE MODE)
 
