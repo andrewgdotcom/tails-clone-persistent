@@ -305,19 +305,26 @@ sub tails_clone_persistent_helper() {
 	my $source_dir = shift;
 	my $block_device = shift;
 	my $mode = shift;
-		
+			
 	if($ENV{"TCP_HELPER_DEBUG"}) {
 		$_DEBUG=1;
 	}
 	
 	$_DEBUG and warn "Args: $\n";
 	# sanitize our input
-	unless($source_dir =~ s!^([^A-Za-z0-9.,=+_/-]*)$!\1! &&
-			$block_device =~ s!^([^A-Za-z0-9.,=+_/-]*)$!\1! ) {
-		print "Unsafe characters detected in filename. Aborting\n";
+	if($source_dir =~ m!^([A-Za-z0-9.,=+_/-]*)$!) {
+		$source_dir=$1;
+	} else {
+		print "Unsafe characters detected in SOURCE_DIR. Aborting\n";
 		exit($_INTERNAL_SANITATION);
 	}
-	
+	if($block_device =~ m!^([A-Za-z0-9.,=+_/-]*)$!) {
+		$block_device=$1;
+	} else {
+		print "Unsafe characters detected in BLOCK_DEVICE. Aborting\n";
+		exit($_INTERNAL_SANITATION);
+	}
+
 	my $partition = "${block_device}2";
 	
 	# temp ID by which the target crypt drive will be known
@@ -325,8 +332,8 @@ sub tails_clone_persistent_helper() {
 	my $tmp_target_dev_id = "TailsData_target";
 
 	if($mode eq "new" || $mode eq "deniable") {
-		if($source_dir eq "") {
-			print "No target disk specified. Aborting\n";
+		if($block_device !~ m!^/dev/!) {
+			print "Invalid BLOCK_DEVICE specified. Aborting\n";
 			exit($_INTERNAL_SANITATION);
 		}
 		&make_partition($block_device, $partition, $tmp_target_dev_id, $mode);
