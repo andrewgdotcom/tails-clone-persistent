@@ -312,8 +312,8 @@ sub tails_clone_persistent_helper() {
 	
 	$_DEBUG and warn "Args: $\n";
 	# sanitize our input
-	if($source_dir =~ m![^A-Za-z0-9.,=+_/-]! ||
-		$block_device =~ m![^A-Za-z0-9.,=+_/-]!) {
+	unless($source_dir =~ s!^([^A-Za-z0-9.,=+_/-]*)$!\1! &&
+			$block_device =~ s!^([^A-Za-z0-9.,=+_/-]*)$!\1! ) {
 		print "Unsafe characters detected in filename. Aborting\n";
 		exit($_INTERNAL_SANITATION);
 	}
@@ -325,6 +325,10 @@ sub tails_clone_persistent_helper() {
 	my $tmp_target_dev_id = "TailsData_target";
 
 	if($mode eq "new" || $mode eq "deniable") {
+		if($source_dir eq "") {
+			print "No target disk specified. Aborting\n";
+			exit($_INTERNAL_SANITATION);
+		}
 		&make_partition($block_device, $partition, $tmp_target_dev_id, $mode);
 	}
 	# if we are told to copy nothing, quit early
