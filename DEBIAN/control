@@ -1,8 +1,8 @@
 Package: tails-clone-persistent
-Version: 0.2.0~alpha1
+Version: 0.2.0~~pre18
 Section: main
 Priority: extra
-Architecture: i386
+Architecture: all
 Depends: perl, libgtk2-perl, libexpect-perl, udisks2, libbytes-random-secure-perl
 Breaks: frith (<< 0.0.48)
 Replaces: frith (<< 0.0.48)

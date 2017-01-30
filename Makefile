@@ -23,6 +23,7 @@ clean:
 
 deb: install
 	vi DEBIAN/control
+	sudo rm -rf $(PREFIX)/DEBIAN
 	sudo cp -R DEBIAN $(PREFIX)/
 	sudo dpkg-deb --build $(PREFIX) $(DPKG_DEST)
 
