@@ -7,28 +7,28 @@ use warnings;
 
 # errors < 65536 are internal
 
-$_INTERNAL_USAGE 			=	0x0001;
-$_INTERNAL_SANITATION 		=	0x0002;
-$_INTERNAL_PARTED_UNPARSED	= 	0x0003;
-$_INTERNAL_MOUNT 			=	0x0004;
+my $_INTERNAL_USAGE 			=	0x0001;
+my $_INTERNAL_SANITATION 		=	0x0002;
+my $_INTERNAL_PARTED_UNPARSED	= 	0x0003;
+my $_INTERNAL_MOUNT 			=	0x0004;
 
 # errors >= 65536 result from failed subprocesses
 # high two bytes identify subprocess
 # low two bytes give subprocess exit code
 # NB: 'dd' subprocess CAN (in theory) fail with error=0
 
-$_ERR_RSYNC	 				=	0x10000;
-$_ERR_DD 					=	0x20000;
-$_ERR_SETFACL 				=	0x30000;
-$_ERR_CHMOD	 				=	0x40000;
-$_ERR_PARTED_RM 			=	0x50000;
-$_ERR_PARTED_MKPART 		=	0x60000;
-$_ERR_PARTED_NAME 			=	0x70000;
-$_ERR_LUKSCLOSE 			=	0x80000;
-$_ERR_LUKSOPEN 				=	0x90000;
-$_ERR_LUKSFORMAT 			=	0xa0000;
-$_ERR_MKE2FS 				=	0xb0000;
-$_ERR_UNMOUNT 				=	0xc0000;
+my $_ERR_RSYNC	 				=	0x10000;
+my $_ERR_DD 					=	0x20000;
+my $_ERR_SETFACL 				=	0x30000;
+my $_ERR_CHMOD	 				=	0x40000;
+my $_ERR_PARTED_RM 			=	0x50000;
+my $_ERR_PARTED_MKPART 		=	0x60000;
+my $_ERR_PARTED_NAME 			=	0x70000;
+my $_ERR_LUKSCLOSE 			=	0x80000;
+my $_ERR_LUKSOPEN 				=	0x90000;
+my $_ERR_LUKSFORMAT 			=	0xa0000;
+my $_ERR_MKE2FS 				=	0xb0000;
+my $_ERR_UNMOUNT 				=	0xc0000;
 
 # global debug flag - we set this based on envar TCP_HELPER_DEBUG
 my $_DEBUG=0;
