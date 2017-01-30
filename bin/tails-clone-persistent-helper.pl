@@ -110,7 +110,7 @@ sub luks_close_unmounted() {
 	do {
 		print "TCPH Attempting to stop device (waiting for buffers to flush)\n";
 		$err = system("/sbin/cryptsetup luksClose $crypted_block_device");
-	} while( $err == 5 );
+	} while( $err == 5<<8 ); # system() return value is shifted by 1B
 	if($err) {
 		warn "TCPH_ERROR Failed to lock partition!\nError: $err\n";
 		exit((0xffff&$err) + $_ERR_LUKSCLOSE);
