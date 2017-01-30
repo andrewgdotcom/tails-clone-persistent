@@ -14,6 +14,6 @@ int main(int ARGC, char **ARGV) {
 			+ ARGV[1] + " " + ARGV[2] + " " + ARGV[3]).c_str());
 	} else {
 		// call with no arguments to get the usage summary
-		system((std::string("/usr/bin/tails-clone-persistent-helper.pl").c_str())
+		system(std::string("/usr/bin/tails-clone-persistent-helper.pl").c_str())
 	}
 }
