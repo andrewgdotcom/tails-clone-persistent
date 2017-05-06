@@ -1,5 +1,5 @@
 Package: tails-clone-persistent
-Version: 0.2.0~~pre18
+Version: 0.2.0~~pre20
 Section: main
 Priority: extra
 Architecture: all
