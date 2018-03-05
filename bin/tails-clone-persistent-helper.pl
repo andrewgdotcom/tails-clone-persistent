@@ -161,7 +161,7 @@ sub unmount_and_lock() {
 		warn "TCPH_ERROR Failed to unmount partition!\nError: $err\n";
 		exit((0xffff&$err) + $_ERR_UNMOUNT);
 	}
-	if(&lock_device($crypted_block_device) == "") {
+	if(! &lock_device($crypted_block_device)) {
 	    exit((0xffff&$err) + $_ERR_LUKSCLOSE);
 	}
 }
