@@ -252,6 +252,7 @@ sub make_partition() {
 	}
 
 	# stop the device to force a flush on slow devices
+	print "TCPH Flushing to disk\n";
 	&lock_device($partition);
 }
 
