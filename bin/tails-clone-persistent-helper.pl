@@ -45,7 +45,7 @@ sub tails_free_start() {
 	my $persistent_partition_exists=0;
 	my $buffer="";
 
-	open(PIPE, "-|", "/sbin/parted -s $block_device p")
+	open(PIPE, "-|", "/usr/bin/sudo /sbin/parted -s $block_device p")
 		|| return ("", 0);
 
 	# Grep through the parted output to find specific partitions
@@ -187,7 +187,7 @@ sub make_partition() {
 	# so safe to assume we need to trash one partition at most
 	if($persistent_partition_exists) {
 		$_DEBUG and warn "Deleting old second partition\n";
-		$err = system('/sbin/parted', '-s', $block_device, 'rm', '2');
+		$err = system('/usr/bin/sudo', '/sbin/parted', '-s', $block_device, 'rm', '2');
 		if($err) {
 			warn "TCPH_ERROR Could not delete old persistent partition\nError: $err\n";
 			exit((0xffff&$err) + $_ERR_PARTED_RM);
@@ -195,21 +195,21 @@ sub make_partition() {
 	}
 
 	$_DEBUG and warn "Making new secondary partition\n";
-	$err = system('/sbin/parted', '-s', $block_device, 'mkpart', 'primary', $start, '100%');
+	$err = system('/usr/bin/sudo', '/sbin/parted', '-s', $block_device, 'mkpart', 'primary', $start, '100%');
 	if($err) {
 		warn "TCPH_ERROR Could not create new partition\nError: $err\n";
 		exit((0xffff&$err) + $_ERR_PARTED_MKPART);
 	}
 
 	$_DEBUG and warn "Renaming partition label\n";
-	$err = system('/sbin/parted', '-s', $block_device, 'name', '2', 'TailsData');
+	$err = system('/usr/bin/sudo', '/sbin/parted', '-s', $block_device, 'name', '2', 'TailsData');
 	if($err) {
 		warn "TCPH_ERROR Could not rename new partition\nError: $err\n";
 		exit((0xffff&$err) + $_ERR_PARTED_NAME);
 	}
 
 	print "TCPH Initialising new crypted volume\n";
-	$err = system('/sbin/cryptsetup', 'luksFormat', $partition);
+	$err = system('/usr/bin/sudo', '/sbin/cryptsetup', 'luksFormat', $partition);
 	if($err) {
 		warn "TCPH_ERROR Could not initialise crypted volume\nError: $err\n";
 		exit((0xffff&$err) + $_ERR_LUKSFORMAT);
@@ -230,7 +230,7 @@ sub make_partition() {
 		# "a while" =~ 5-10 mins/GB on crappy hardware ;-)
 		
 		# when we update to coreutils 8.24 we can use status=progress
-		$err = system('/bin/dd', 'if=/dev/zero', "of=$tmp_target_dev_path", 'bs=128M');
+		$err = system('/usr/bin/sudo', '/bin/dd', 'if=/dev/zero', "of=$tmp_target_dev_path", 'bs=128M');
 		if($err != 256) { 
 			# yes, we WANT to fail with "no space left on device"!
 			&lock_device($tmp_target_dev_path);
@@ -244,7 +244,7 @@ sub make_partition() {
 	# This will need a new mode - may not be worth the hassle
 
 	print "TCPH Creating filesystem\n";
-	$err = system('/sbin/mke2fs', '-j', '-t', 'ext4', '-L', 'TailsData', $tmp_target_dev_path);
+	$err = system('/usr/bin/sudo', s'/sbin/mke2fs', '-j', '-t', 'ext4', '-L', 'TailsData', $tmp_target_dev_path);
 	if($err) {
 		&lock_device($tmp_target_dev_path);
 		warn "TCPH_ERROR Could not create filesystem on new crypted volume\nError: $err\n";
@@ -252,7 +252,7 @@ sub make_partition() {
 	}
 
 	# stop the device to force a flush on slow devices
-	&lock_device($tmp_target_dev_path);
+	&lock_device($partition);
 }
 
 

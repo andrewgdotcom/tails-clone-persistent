@@ -1,6 +1,6 @@
 # Sudo permissions for tails-clone-persistent tool
 
-Cmnd_Alias CLONE_PERSISTENCE = /usr/bin/tails-clone-persistent-sync
+Cmnd_Alias CLONE_PERSISTENCE = /usr/bin/tails-clone-persistent-sync, /sbin/parted, /sbin/cryptsetup, /sbin/mke2fs, /bin/dd
 
 amnesia			ALL = (tails-persistence-setup)	NOPASSWD: /usr/bin/tails-clone-persistent-helper.pl
 tails-persistence-setup	ALL = (root)			NOPASSWD: CLONE_PERSISTENCE
