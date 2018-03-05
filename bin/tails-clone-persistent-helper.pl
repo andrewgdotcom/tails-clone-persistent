@@ -59,7 +59,7 @@ sub tails_free_start() {
 			$persistent_partition_exists=1;
 		} elsif(/^\s*[[:digit:]]+\s+[[:digit:]]+[kMGT]?B\s+([[:digit:]]+[kMGT]+B)\s+.*$/) {
 			# Matched any other partition number
-			die "Found too many partitions!\n";
+			die "TCPH_ERROR Found too many partitions!\n";
 		}
 	}
 
@@ -73,7 +73,7 @@ sub tails_free_start() {
 sub mount_device() {
 	my $device = shift;
 
-	print "Mounting crypted partition...\n";
+	print "TCPH Mounting crypted partition...\n";
 	open(PIPE, "-|", "/usr/bin/udisksctl mount --block-device $device")
 		|| return "";
 
@@ -87,7 +87,7 @@ sub mount_device() {
 	close(PIPE);
 
 	if($mount_point eq "") {
-		print "Could not mount filesystem!\n";
+		print "TCPH_ERROR Could not mount filesystem!\n";
 		return("");
 	}
 
@@ -105,7 +105,7 @@ sub mount_device() {
 sub unlock_device() {
 	my $device = shift;
 
-	print "Unlocking crypted partition...\n";
+	print "TCPH Unlocking crypted partition...\n";
 	open(PIPE, "-|", "/usr/bin/udisksctl unlock --block-device $device")
 		|| return "";
 
@@ -119,7 +119,7 @@ sub unlock_device() {
 	close(PIPE);
 
 	if($dm_device eq "") {
-		print "Could not unlock partition!\n";
+		print "TCPH_ERROR Could not unlock partition!\n";
 		return("");
 	}
 
