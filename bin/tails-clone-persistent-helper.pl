@@ -305,30 +305,6 @@ sub do_copy() {
 	# after rsync mucks them about - otherwise tails will barf. See
 	# https://tails.boum.org/contribute/design/persistence/#security
 
-#	$err = chmod(0775, $mount_point); # chmod should return 1!
-#	if($err!=1){
-#		&unmount_device($tmp_target_dev_path);
-#		&lock_device($partition);
-#		warn "TCPH_ERROR Could not set permissions on $mount_point\nError: $err\n";
-#		exit((0xffff&$err) + $_ERR_CHMOD);
-#	}
-#
-#	$err = system('/usr/bin/setfacl', '-b', $mount_point);
-#	if($err){
-#		&unmount_device($tmp_target_dev_path);
-#		&lock_device($partition);
-#		warn "TCPH_ERROR Could not clear ACLs on $mount_point\nError: $err\n";
-#		exit((0xffff&$err) + $_ERR_SETFACL);
-#	}
-#
-#	$err = system('/usr/bin/setfacl', '-m', 'user:tails-persistence-setup:rwx', $mount_point);
-#	if($err){
-#		&unmount_device($tmp_target_dev_path);
-#		&lock_device($partition);
-#		warn "TCPH_ERROR Could not set ACLs on $mount_point\nError: $err\n";
-#		exit((0xffff&$err) + $_ERR_SETFACL);
-#	}
-
 	$err = system('/usr/bin/sudo', '/usr/bin/tails-fix-persistent-volume-permissions');
 	if($err){
 		&unmount_device($tmp_target_dev_path);
