@@ -310,7 +310,7 @@ sub tails_clone_persistent_helper() {
 		$_DEBUG=1;
 	}
 	
-	$_DEBUG and warn "Args: $\n";
+	$_DEBUG and warn "Args: ${source_dir} ${block_device} ${mode}\n";
 	# sanitize our input
 	if($source_dir =~ m!^([A-Za-z0-9.,=+_/-]*)$!) {
 		$source_dir=$1;
