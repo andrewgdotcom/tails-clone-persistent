@@ -2,5 +2,5 @@
 
 Cmnd_Alias CLONE_PERSISTENCE = /usr/bin/tails-clone-persistent-sync
 
-amnesia					ALL = (tails-persistence-setup)	NOPASSWD: /usr/bin/tails-clone-persistent-helper.pl
-tails-persistence-setup	ALL = (root)					NOPASSWD: CLONE_PERSISTENCE
+amnesia			ALL = (tails-persistence-setup)	NOPASSWD: /usr/bin/tails-clone-persistent-helper.pl
+tails-persistence-setup	ALL = (root)			NOPASSWD: CLONE_PERSISTENCE
