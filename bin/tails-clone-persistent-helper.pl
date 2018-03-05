@@ -44,10 +44,10 @@ sub tails_free_start() {
 
 	my $persistent_partition_exists=0;
 	my $buffer="";
-	
+
 	open(PIPE, "-|", "/sbin/parted $block_device p") 
 		|| return ("", 0);
-		
+
 	# Grep through the parted output to find specific partitions
 	while(<PIPE>) { 
 		if(/^\s*1\s+[[:digit:]]+[kMGT]?B\s+([[:digit:]]+[kMGT]+B)\s+.*$/) {
@@ -72,7 +72,7 @@ sub tails_free_start() {
 
 sub mount_device() {
 	my $device = shift;
-	
+
 	print "Mounting crypted partition...\n";
 	open(PIPE, "-|", "/usr/bin/udisksctl mount --block-device $device")
 		|| return "";
@@ -85,12 +85,12 @@ sub mount_device() {
 		}
 	}
 	close(PIPE);
-	
+
 	if($mount_point eq "") {
 		print "Could not mount filesystem!\n";
 		return("");
 	}
-	
+
 	# Test to see if udisksctl has appended a full stop to the output
 	# and delete it. Some versions do, some don't.
 	if($mount_point =~ /\.$/) {
@@ -182,7 +182,7 @@ sub make_partition() {
 		print STDOUT "TCPH_ERROR Could not detect end of tails primary partition\n";
 		exit($_INTERNAL_PARTED_UNPARSED);
 	}
-	
+
 	# if >2 partitions, tails_free_start would have aborted above
 	# so safe to assume we need to trash one partition at most
 	if($persistent_partition_exists) {
@@ -238,11 +238,11 @@ sub make_partition() {
 			exit((0xffff&$err) + $_ERR_DD);		
 		}
 	}
-	
+
 	# If we're called for deniability purposes only, we _could_
 	# skip the filesystem creation and save a little time here.
 	# This will need a new mode - may not be worth the hassle
-	
+
 	print "TCPH Creating filesystem\n";
 	$err = system('/sbin/mke2fs', '-j', '-t', 'ext4', '-L', 'TailsData', $tmp_target_dev_path);
 	if($err) {
@@ -250,7 +250,7 @@ sub make_partition() {
 		warn "TCPH_ERROR Could not create filesystem on new crypted volume\nError: $err\n";
 		exit((0xffff&$err) + $_ERR_MKE2FS);
 	}
-	
+
 	# stop the device to force a flush on slow devices
 	&lock_device($tmp_target_dev_path);
 }
@@ -264,7 +264,7 @@ sub do_copy() {
 		my $source_dir = shift;
 		my $partition = shift;
 	my $err;
-	
+
 	print "Unlocking crypted partition\n";
 
 	# (re)open the crypted device
@@ -294,11 +294,11 @@ sub do_copy() {
 		warn "TCPH_ERROR Error syncing files\nError: $err\n";
 		exit((0xffff&$err) + $_ERR_RSYNC);
 	}
-	
+
 	# ensure correct permissions on the root of the persistent disk
 	# after rsync mucks them about - otherwise tails will barf. See
 	# https://tails.boum.org/contribute/design/persistence/#security
-	
+
 	$err = chmod(0775, $mount_point); # chmod should return 1!
 	if($err!=1){
 		&unmount_device($tmp_target_dev_path);
@@ -306,7 +306,7 @@ sub do_copy() {
 		warn "TCPH_ERROR Could not set permissions on $mount_point\nError: $err\n";
 		exit((0xffff&$err) + $_ERR_CHMOD);
 	}
-	
+
 	$err = system('/usr/bin/setfacl', '-b', $mount_point);
 	if($err){
 		&unmount_device($tmp_target_dev_path);
@@ -326,7 +326,7 @@ sub do_copy() {
 	print "TCPH Unmounting and flushing data to disk\n";
 	&unmount_device($tmp_target_dev_path);
 	&lock_device($partition);
-	
+
 	print "TCPH Copy complete\n";
 }
 
@@ -336,11 +336,11 @@ sub tails_clone_persistent_helper() {
 	my $source_dir = shift;
 	my $block_device = shift;
 	my $mode = shift;
-			
+
 	if($ENV{"TCP_HELPER_DEBUG"}) {
 		$_DEBUG=1;
 	}
-	
+
 	$_DEBUG and warn "Args: ${source_dir} ${block_device} ${mode}\n";
 	# sanitize our input
 	if($source_dir =~ m!^([A-Za-z0-9.,=+_/-]*)$!) {
@@ -357,7 +357,7 @@ sub tails_clone_persistent_helper() {
 	}
 
 	my $partition = "${block_device}2";
-	
+
 	if($mode eq "new" || $mode eq "deniable") {
 		if($block_device !~ m!^/dev/!) {
 			print "Invalid BLOCK_DEVICE specified. Aborting\n";
