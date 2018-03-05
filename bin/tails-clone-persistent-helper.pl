@@ -265,8 +265,6 @@ sub do_copy() {
 		my $partition = shift;
 	my $err;
 
-	print "Unlocking crypted partition\n";
-
 	# (re)open the crypted device
 	my $tmp_target_dev_path = &unlock_device($partition);
 	if($tmp_target_dev_path eq "") {
