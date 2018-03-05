@@ -15,6 +15,7 @@ install: $(BINPREFIX) $(SUDOERSD)
 	sudo cp bin/tails-clone-persistent bin/tails-clone-persistent-helper.pl $(BINPREFIX)/tails-clone-persistent-helper $(BINPREFIX)/tails-clone-persistent-sync $(BINPREFIX)/
 	sudo cp zzz_tails-clone-persistent $(SUDOERSD)/
 	sudo chmod 755 $(BINPREFIX)/tails-clone-persistent $(BINPREFIX)/tails-clone-persistent-helper.pl $(BINPREFIX)/tails-clone-persistent-helper $(BINPREFIX)/tails-clone-persistent-sync
+	sudo chmod 440 $(SUDOERSD)/zzz_tails-clone-persistent
 
 deb: install
 	vi DEBIAN/control
