@@ -622,7 +622,7 @@ Otherwise, you should delete it and make one with a new passphrase.
 	###############
 
 	# Now call expect to handle the setuid helper
-	&make_progress('Copying data...');
+	&make_progress('Preparing copy...');
 	
 	$ENV{'TCP_HELPER_DEBUG'}='1' if $CMD_OPTIONS{'debug'};
 	# the "factory" is just a standard expect object
