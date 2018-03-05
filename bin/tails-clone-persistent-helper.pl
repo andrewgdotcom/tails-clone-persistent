@@ -148,7 +148,7 @@ sub lock_device() {
 sub unmount_device() {
 	my $crypted_block_device = shift;
 	my $err;
-	$err = system("/usr/bin/udisksctl", "unmount", "--force", "--block-device", $crypted_block_device);
+	$err = system("/usr/bin/udisksctl", "unmount", "--block-device", $crypted_block_device);
 	if($err) {
 		warn "TCPH_ERROR Failed to unmount partition!\nError: $err\n";
 		exit((0xffff&$err) + $_ERR_UNMOUNT);
