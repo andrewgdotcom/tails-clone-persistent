@@ -45,7 +45,7 @@ sub tails_free_start() {
 	my $persistent_partition_exists=0;
 	my $buffer="";
 
-	open(PIPE, "-|", "/sbin/parted $block_device p") 
+	open(PIPE, "-|", "/sbin/parted -s $block_device p")
 		|| return ("", 0);
 
 	# Grep through the parted output to find specific partitions
@@ -187,7 +187,7 @@ sub make_partition() {
 	# so safe to assume we need to trash one partition at most
 	if($persistent_partition_exists) {
 		$_DEBUG and warn "Deleting old second partition\n";
-		$err = system('/sbin/parted', '-s', $block_device, 'rm', '2');	
+		$err = system('/sbin/parted', '-s', $block_device, 'rm', '2');
 		if($err) {
 			warn "TCPH_ERROR Could not delete old persistent partition\nError: $err\n";
 			exit((0xffff&$err) + $_ERR_PARTED_RM);
