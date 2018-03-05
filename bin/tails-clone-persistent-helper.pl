@@ -135,34 +135,22 @@ sub unlock_device() {
 # Housekeeping and cleanup
 
 sub lock_device() {
-	my $device = shift;
-
-	print "Locking crypted partition...\n";
-	open(PIPE, "-|", "/usr/bin/udisksctl lock --block-device $device") 
-		|| return "";
-
-	while(<PIPE>) {
-		if(/^Locked (\S+)$/) {
-			return("Locked");
-			last;
-		}
+	my $block_device = shift;
+	my $err;
+	$err = system("/usr/bin/udisksctl", "lock", "--block-device", $block_device);
+	if($err) {
+		warn "TCPH_ERROR Failed to lock partition!\nError: $err\n";
+		exit((0xffff&$err) + $_ERR_LUKSCLOSE);
 	}
-	close(PIPE);
-
-	print "Could not lock partition!\n";
-	return "";
 }
 
-sub unmount_and_lock() {
+sub unmount_device() {
 	my $crypted_block_device = shift;
 	my $err;
 	$err = system("/usr/bin/udisksctl", "unmount", "--force", "--block-device", $crypted_block_device);
 	if($err) {
 		warn "TCPH_ERROR Failed to unmount partition!\nError: $err\n";
 		exit((0xffff&$err) + $_ERR_UNMOUNT);
-	}
-	if(! &lock_device($crypted_block_device)) {
-	    exit((0xffff&$err) + $_ERR_LUKSCLOSE);
 	}
 }
 
@@ -351,7 +339,8 @@ sub do_copy() {
 	$err = system('/usr/bin/rsync', '-a', '--delete', '--exclude=gnupg/random_seed', '--exclude=lost+found', "$source_dir/", $mount_point);
 	if($err) {
 #		&unmount_and_luks_close($tmp_target_dev_path);
-		&unmount_and_lock($tmp_target_dev_path);
+		&unmount_device($tmp_target_dev_path);
+		&lock_device($partition);
 		warn "TCPH_ERROR Error syncing files\nError: $err\n";
 		exit((0xffff&$err) + $_ERR_RSYNC);
 	}
@@ -363,7 +352,8 @@ sub do_copy() {
 	$err = chmod(0775, $mount_point); # chmod should return 1!
 	if($err!=1){
 #		&unmount_and_luks_close($tmp_target_dev_path);
-		&unmount_and_lock($tmp_target_dev_path);
+		&unmount_device($tmp_target_dev_path);
+		&lock_device($partition);
 		warn "TCPH_ERROR Could not set permissions on $mount_point\nError: $err\n";
 		exit((0xffff&$err) + $_ERR_CHMOD);
 	}
@@ -371,7 +361,8 @@ sub do_copy() {
 	$err = system('/usr/bin/setfacl', '-b', $mount_point);
 	if($err){
 #		&unmount_and_luks_close($tmp_target_dev_path);
-		&unmount_and_lock($tmp_target_dev_path);
+		&unmount_device($tmp_target_dev_path);
+		&lock_device($partition);
 		warn "TCPH_ERROR Could not clear ACLs on $mount_point\nError: $err\n";
 		exit((0xffff&$err) + $_ERR_SETFACL);
 	}
@@ -379,14 +370,16 @@ sub do_copy() {
 	$err = system('/usr/bin/setfacl', '-m', 'user:tails-persistence-setup:rwx', $mount_point);
 	if($err){
 #		&unmount_and_luks_close($tmp_target_dev_path);
-		&unmount_and_lock($tmp_target_dev_path);
+		&unmount_device($tmp_target_dev_path);
+		&lock_device($partition);
 		warn "TCPH_ERROR Could not set ACLs on $mount_point\nError: $err\n";
 		exit((0xffff&$err) + $_ERR_SETFACL);
 	}
 
 	print "TCPH Unmounting and flushing data to disk\n";
 #	&unmount_and_luks_close($tmp_target_dev_path);
-	&unmount_and_lock($tmp_target_dev_path);
+	&unmount_device($tmp_target_dev_path);
+	&lock_device($partition);
 	
 	print "TCPH Copy complete\n";
 }
