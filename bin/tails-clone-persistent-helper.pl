@@ -132,6 +132,7 @@ sub unlock_device() {
 	return($dm_device);
 }
 
+
 # Housekeeping and cleanup
 
 sub lock_device() {
@@ -154,54 +155,24 @@ sub unmount_device() {
 	}
 }
 
-# Old housekeeping routines; deprecated!
-
-sub luks_close_unmounted() {
-	my $crypted_block_device = shift;
-	# use this to make sure all data is flushed and cryption stopped
-
-	my $err;
-	do {
-		print "TCPH Attempting to stop device (waiting for buffers to flush)\n";
-		$err = system('/sbin/cryptsetup', 'luksClose', $crypted_block_device);
-	} while( $err == 5<<8 ); # system() return value is shifted by 1B
-	if($err) {
-		warn "TCPH_ERROR Failed to lock partition!\nError: $err\n";
-		exit((0xffff&$err) + $_ERR_LUKSCLOSE);
-	}
-}
-
-sub unmount_and_luks_close() {
-	my $crypted_block_device = shift;
-	my $err;
-	$err = system("/usr/bin/udisksctl", "unmount", "--force", "--block-device", $crypted_block_device);
-	if($err) {
-		warn "TCPH_ERROR Failed to unmount partition!\nError: $err\n";
-		exit((0xffff&$err) + $_ERR_UNMOUNT);
-	}
-	&luks_close_unmounted($crypted_block_device);
-}
-
 
 # Create a persistent partition, deleting any old ones as necessary.
 # This is called for modes "new" and "deniable".
-# We luksClose the partition at the end for two reasons:
+# We lock the partition at the end for two reasons:
 #
 # a) simplicity: do_copy() doesn't need to know if we were called
 # b) safety: we found odd problems mounting newly-created partitions 
 #    that were solved by forcing a flush to disk
 #
-# This does mean we end up luksOpening the partition twice. This is
+# This does mean we end up unlocking the partition twice. This is
 # fine, as we aren't intended to be called directly and Expect doesn't
 # care how many times it is prompted for the same passphrase. ;-)
 
 sub make_partition() {
 		my $block_device = shift;
 		my $partition = shift;
-		my $tmp_target_dev_id = shift;
 		my $mode = shift;
 	my $err;
-#	my $tmp_target_dev_path = "/dev/mapper/$tmp_target_dev_id";
 
 	print "TCPH Configuring partitions\n";
 
@@ -247,18 +218,11 @@ sub make_partition() {
 	$_DEBUG and warn "Unlocking new crypted volume\n";
 	my $tmp_target_dev_path = &unlock_device($partition);
 	if($tmp_target_dev_path eq "") {
-#		&luks_close_unmounted($tmp_target_dev_path);
 		&lock_device($tmp_target_dev_path);
 		warn "TCPH_ERROR Could not unlock crypted volume\n";
 		exit($_INTERNAL_MOUNT);
 	}
 	$_DEBUG and warn "Crypted volume unlocked at $tmp_target_dev_path\n";
-
-#	$err = system('/sbin/cryptsetup', 'luksOpen', $partition, $tmp_target_dev_id);
-#	if($err) {
-#		warn "TCPH_ERROR Could not unlock new crypted volume\nError: $err\n";
-#		exit((0xffff&$err) + $_ERR_LUKSOPEN);
-#	}
 
 	# plausible deniability
 	if($mode eq "deniable") {
@@ -269,7 +233,6 @@ sub make_partition() {
 		$err = system('/bin/dd', 'if=/dev/zero', "of=$tmp_target_dev_path", 'bs=128M');
 		if($err != 256) { 
 			# yes, we WANT to fail with "no space left on device"!
-#			&luks_close_unmounted($tmp_target_dev_path);
 			&lock_device($tmp_target_dev_path);
 			warn "TCPH_ERROR Could not randomise free space on new crypted volume\nError: $err\n";
 			exit((0xffff&$err) + $_ERR_DD);		
@@ -283,14 +246,12 @@ sub make_partition() {
 	print "TCPH Creating filesystem\n";
 	$err = system('/sbin/mke2fs', '-j', '-t', 'ext4', '-L', 'TailsData', $tmp_target_dev_path);
 	if($err) {
-#		&luks_close_unmounted($tmp_target_dev_path);
 		&lock_device($tmp_target_dev_path);
 		warn "TCPH_ERROR Could not create filesystem on new crypted volume\nError: $err\n";
 		exit((0xffff&$err) + $_ERR_MKE2FS);
 	}
 	
-	# stop the luks device to force a flush on slow devices
-#	&luks_close_unmounted($tmp_target_dev_path);
+	# stop the device to force a flush on slow devices
 	&lock_device($tmp_target_dev_path);
 }
 
@@ -302,22 +263,13 @@ sub make_partition() {
 sub do_copy() {
 		my $source_dir = shift;
 		my $partition = shift;
-		my $tmp_target_dev_id = shift;
 	my $err;
-#	my $tmp_target_dev_path = "/dev/mapper/$tmp_target_dev_id";
 	
 	print "Unlocking crypted partition\n";
 
 	# (re)open the crypted device
-#	$err = system('/sbin/cryptsetup', 'luksOpen', $partition, $tmp_target_dev_id);
-#	if($err) {
-#		warn "TCPH_ERROR Could not unlock crypted volume\nError: $err\n";
-#		exit((0xffff&$err) + $_ERR_LUKSOPEN);
-#	}
-	
 	my $tmp_target_dev_path = &unlock_device($partition);
 	if($tmp_target_dev_path eq "") {
-#		&luks_close_unmounted($tmp_target_dev_path);
 		&lock_device($tmp_target_dev_path);
 		warn "TCPH_ERROR Could not unlock crypted volume\n";
 		exit($_INTERNAL_MOUNT);
@@ -326,7 +278,6 @@ sub do_copy() {
 
 	my $mount_point = &mount_device($tmp_target_dev_path);
 	if($mount_point eq "") {
-#		&luks_close_unmounted($tmp_target_dev_path);
 		&lock_device($tmp_target_dev_path);
 		warn "TCPH_ERROR Could not mount crypted volume\n";
 		exit($_INTERNAL_MOUNT);
@@ -338,7 +289,6 @@ sub do_copy() {
 	print "TCPH Copying files...\n";
 	$err = system('/usr/bin/rsync', '-a', '--delete', '--exclude=gnupg/random_seed', '--exclude=lost+found', "$source_dir/", $mount_point);
 	if($err) {
-#		&unmount_and_luks_close($tmp_target_dev_path);
 		&unmount_device($tmp_target_dev_path);
 		&lock_device($partition);
 		warn "TCPH_ERROR Error syncing files\nError: $err\n";
@@ -351,7 +301,6 @@ sub do_copy() {
 	
 	$err = chmod(0775, $mount_point); # chmod should return 1!
 	if($err!=1){
-#		&unmount_and_luks_close($tmp_target_dev_path);
 		&unmount_device($tmp_target_dev_path);
 		&lock_device($partition);
 		warn "TCPH_ERROR Could not set permissions on $mount_point\nError: $err\n";
@@ -360,7 +309,6 @@ sub do_copy() {
 	
 	$err = system('/usr/bin/setfacl', '-b', $mount_point);
 	if($err){
-#		&unmount_and_luks_close($tmp_target_dev_path);
 		&unmount_device($tmp_target_dev_path);
 		&lock_device($partition);
 		warn "TCPH_ERROR Could not clear ACLs on $mount_point\nError: $err\n";
@@ -369,7 +317,6 @@ sub do_copy() {
 
 	$err = system('/usr/bin/setfacl', '-m', 'user:tails-persistence-setup:rwx', $mount_point);
 	if($err){
-#		&unmount_and_luks_close($tmp_target_dev_path);
 		&unmount_device($tmp_target_dev_path);
 		&lock_device($partition);
 		warn "TCPH_ERROR Could not set ACLs on $mount_point\nError: $err\n";
@@ -377,7 +324,6 @@ sub do_copy() {
 	}
 
 	print "TCPH Unmounting and flushing data to disk\n";
-#	&unmount_and_luks_close($tmp_target_dev_path);
 	&unmount_device($tmp_target_dev_path);
 	&lock_device($partition);
 	
@@ -412,22 +358,18 @@ sub tails_clone_persistent_helper() {
 
 	my $partition = "${block_device}2";
 	
-	# temp ID by which the target crypt drive will be known
-	# should probably randomise this to prevent clashing
-	my $tmp_target_dev_id = "TailsData_target";
-
 	if($mode eq "new" || $mode eq "deniable") {
 		if($block_device !~ m!^/dev/!) {
 			print "Invalid BLOCK_DEVICE specified. Aborting\n";
 			exit($_INTERNAL_SANITATION);
 		}
-		&make_partition($block_device, $partition, $tmp_target_dev_id, $mode);
+		&make_partition($block_device, $partition, $mode);
 	}
 	# if we are told to copy nothing, quit early
 	if($source_dir eq "") {
 		print "TCPH Not copying any files, as requested\n";
 	} else {
-		&do_copy($source_dir, $partition, $tmp_target_dev_id);
+		&do_copy($source_dir, $partition);
 	}
 }
 
@@ -447,7 +389,7 @@ SOURCE_DIR: directory to be rsynced (without trailing /)
 
 BLOCK_DEVICE: the target Tails drive (NOT partition!)
  (e.g. "/dev/sdb")
- NB It should be neither luksOpened nor mounted
+ NB The target partition should be neither unlocked nor mounted
 
 MODE: one of
  existing: update the contents of an existing persistent partition
