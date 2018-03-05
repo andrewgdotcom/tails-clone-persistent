@@ -7,4 +7,7 @@ set -e
 
 RUN_AS_USER=tails-persistence-setup
 
+cd /
+xhost +SI:localuser:"$RUN_AS_USER"
 sudo -u "$RUN_AS_USER" /usr/bin/tails-clone-persistent-helper.pl $@
+xhost -SI:localuser:"$RUN_AS_USER"
