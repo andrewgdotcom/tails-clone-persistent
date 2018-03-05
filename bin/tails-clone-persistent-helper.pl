@@ -74,7 +74,7 @@ sub mount_device() {
 	my $device = shift;
 	
 	print "Mounting crypted partition...\n";
-	open(PIPE, "-|", "/usr/bin/udisksctl mount --block-device $device") 
+	open(PIPE, "-|", "/usr/bin/udisksctl mount --block-device $device")
 		|| return "";
 
 	my $mount_point="";
@@ -100,12 +100,78 @@ sub mount_device() {
 	return($mount_point);
 }
 
+# unlock a filesystem and return a string containing the devicemapper device
+
+sub unlock_device() {
+	my $device = shift;
+
+	print "Unlocking crypted partition...\n";
+	open(PIPE, "-|", "/usr/bin/udisksctl unlock --block-device $device")
+		|| return "";
+
+	my $dm_device="";
+	while(<PIPE>) {
+		if(/^Unlocked \S+ as (\S+)$/) {
+			$dm_device = $1;
+			last;
+		}
+	}
+	close(PIPE);
+
+	if($dm_device eq "") {
+		print "Could not unlock partition!\n";
+		return("");
+	}
+
+	# Test to see if udisksctl has appended a full stop to the output
+	# and delete it. Some versions do, some don't.
+	if($dm_device =~ /\.$/) {
+		$_DEBUG and warn "Truncating trailing punctuation\n";
+		chop $dm_device;
+	}
+	return($dm_device);
+}
+
 # Housekeeping and cleanup
+
+sub lock_device() {
+	my $device = shift;
+
+	print "Locking crypted partition...\n";
+	open(PIPE, "-|", "/usr/bin/udisksctl lock --block-device $device") 
+		|| return "";
+
+	while(<PIPE>) {
+		if(/^Locked (\S+)$/) {
+			return("Locked");
+			last;
+		}
+	}
+	close(PIPE);
+
+	print "Could not lock partition!\n";
+	return "";
+}
+
+sub unmount_and_lock() {
+	my $crypted_block_device = shift;
+	my $err;
+	$err = system("/usr/bin/udisksctl", "unmount", "--force", "--block-device", $crypted_block_device);
+	if($err) {
+		warn "TCPH_ERROR Failed to unmount partition!\nError: $err\n";
+		exit((0xffff&$err) + $_ERR_UNMOUNT);
+	}
+	if(&lock_device($crypted_block_device) == "") {
+	    exit((0xffff&$err) + $_ERR_LUKSCLOSE);
+	}
+}
+
+# Old housekeeping routines; deprecated!
 
 sub luks_close_unmounted() {
 	my $crypted_block_device = shift;
 	# use this to make sure all data is flushed and cryption stopped
-	
+
 	my $err;
 	do {
 		print "TCPH Attempting to stop device (waiting for buffers to flush)\n";
@@ -147,7 +213,7 @@ sub make_partition() {
 		my $tmp_target_dev_id = shift;
 		my $mode = shift;
 	my $err;
-	my $tmp_target_dev_path = "/dev/mapper/$tmp_target_dev_id";
+#	my $tmp_target_dev_path = "/dev/mapper/$tmp_target_dev_id";
 
 	print "TCPH Configuring partitions\n";
 
@@ -191,12 +257,21 @@ sub make_partition() {
 	}
 
 	$_DEBUG and warn "Unlocking new crypted volume\n";
-	$err = system('/sbin/cryptsetup', 'luksOpen', $partition, $tmp_target_dev_id);
-	if($err) {
-		warn "TCPH_ERROR Could not unlock new crypted volume\nError: $err\n";
-		exit((0xffff&$err) + $_ERR_LUKSOPEN);
+	my $tmp_target_dev_path = &unlock_device($partition);
+	if($tmp_target_dev_path eq "") {
+#		&luks_close_unmounted($tmp_target_dev_path);
+		&lock_device($tmp_target_dev_path);
+		warn "TCPH_ERROR Could not unlock crypted volume\n";
+		exit($_INTERNAL_MOUNT);
 	}
-	
+	$_DEBUG and warn "Crypted volume unlocked at $tmp_target_dev_path\n";
+
+#	$err = system('/sbin/cryptsetup', 'luksOpen', $partition, $tmp_target_dev_id);
+#	if($err) {
+#		warn "TCPH_ERROR Could not unlock new crypted volume\nError: $err\n";
+#		exit((0xffff&$err) + $_ERR_LUKSOPEN);
+#	}
+
 	# plausible deniability
 	if($mode eq "deniable") {
 		print "TCPH Randomising free space for plausible deniability. This may take a while.\n";
@@ -206,7 +281,8 @@ sub make_partition() {
 		$err = system('/bin/dd', 'if=/dev/zero', "of=$tmp_target_dev_path", 'bs=128M');
 		if($err != 256) { 
 			# yes, we WANT to fail with "no space left on device"!
-			&luks_close_unmounted($tmp_target_dev_path);
+#			&luks_close_unmounted($tmp_target_dev_path);
+			&lock_device($tmp_target_dev_path);
 			warn "TCPH_ERROR Could not randomise free space on new crypted volume\nError: $err\n";
 			exit((0xffff&$err) + $_ERR_DD);		
 		}
@@ -219,13 +295,15 @@ sub make_partition() {
 	print "TCPH Creating filesystem\n";
 	$err = system('/sbin/mke2fs', '-j', '-t', 'ext4', '-L', 'TailsData', $tmp_target_dev_path);
 	if($err) {
-		&luks_close_unmounted($tmp_target_dev_path);
+#		&luks_close_unmounted($tmp_target_dev_path);
+		&lock_device($tmp_target_dev_path);
 		warn "TCPH_ERROR Could not create filesystem on new crypted volume\nError: $err\n";
 		exit((0xffff&$err) + $_ERR_MKE2FS);
 	}
 	
 	# stop the luks device to force a flush on slow devices
-	&luks_close_unmounted($tmp_target_dev_path);
+#	&luks_close_unmounted($tmp_target_dev_path);
+	&lock_device($tmp_target_dev_path);
 }
 
 
@@ -238,32 +316,42 @@ sub do_copy() {
 		my $partition = shift;
 		my $tmp_target_dev_id = shift;
 	my $err;
-	my $tmp_target_dev_path = "/dev/mapper/$tmp_target_dev_id";
+#	my $tmp_target_dev_path = "/dev/mapper/$tmp_target_dev_id";
 	
 	print "Unlocking crypted partition\n";
 
 	# (re)open the crypted device
-	$err = system('/sbin/cryptsetup', 'luksOpen', $partition, $tmp_target_dev_id);
-	if($err) {
-		warn "TCPH_ERROR Could not unlock crypted volume\nError: $err\n";
-		exit((0xffff&$err) + $_ERR_LUKSOPEN);
+#	$err = system('/sbin/cryptsetup', 'luksOpen', $partition, $tmp_target_dev_id);
+#	if($err) {
+#		warn "TCPH_ERROR Could not unlock crypted volume\nError: $err\n";
+#		exit((0xffff&$err) + $_ERR_LUKSOPEN);
+#	}
+	
+	my $tmp_target_dev_path = &unlock_device($partition);
+	if($tmp_target_dev_path eq "") {
+#		&luks_close_unmounted($tmp_target_dev_path);
+		&lock_device($tmp_target_dev_path);
+		warn "TCPH_ERROR Could not unlock crypted volume\n";
+		exit($_INTERNAL_MOUNT);
 	}
+	$_DEBUG and warn "Crypted volume unlocked at $tmp_target_dev_path\n";
 
 	my $mount_point = &mount_device($tmp_target_dev_path);
 	if($mount_point eq "") {
-		&luks_close_unmounted($tmp_target_dev_path);
+#		&luks_close_unmounted($tmp_target_dev_path);
+		&lock_device($tmp_target_dev_path);
 		warn "TCPH_ERROR Could not mount crypted volume\n";
 		exit($_INTERNAL_MOUNT);
 	}
 	$_DEBUG and warn "Crypted volume mounted on $mount_point\n";
 
-		
 	# run rsync to copy files. Note that --delete does NOT delete
 	# --exclude'd files on the target.
 	print "TCPH Copying files...\n";
 	$err = system('/usr/bin/rsync', '-a', '--delete', '--exclude=gnupg/random_seed', '--exclude=lost+found', "$source_dir/", $mount_point);
 	if($err) {
-		&unmount_and_luks_close($tmp_target_dev_path);
+#		&unmount_and_luks_close($tmp_target_dev_path);
+		&unmount_and_lock($tmp_target_dev_path);
 		warn "TCPH_ERROR Error syncing files\nError: $err\n";
 		exit((0xffff&$err) + $_ERR_RSYNC);
 	}
@@ -274,27 +362,31 @@ sub do_copy() {
 	
 	$err = chmod(0775, $mount_point); # chmod should return 1!
 	if($err!=1){
-		&unmount_and_luks_close($tmp_target_dev_path);
+#		&unmount_and_luks_close($tmp_target_dev_path);
+		&unmount_and_lock($tmp_target_dev_path);
 		warn "TCPH_ERROR Could not set permissions on $mount_point\nError: $err\n";
 		exit((0xffff&$err) + $_ERR_CHMOD);
 	}
 	
 	$err = system('/usr/bin/setfacl', '-b', $mount_point);
 	if($err){
-		&unmount_and_luks_close($tmp_target_dev_path);
+#		&unmount_and_luks_close($tmp_target_dev_path);
+		&unmount_and_lock($tmp_target_dev_path);
 		warn "TCPH_ERROR Could not clear ACLs on $mount_point\nError: $err\n";
 		exit((0xffff&$err) + $_ERR_SETFACL);
 	}
 
 	$err = system('/usr/bin/setfacl', '-m', 'user:tails-persistence-setup:rwx', $mount_point);
 	if($err){
-		&unmount_and_luks_close($tmp_target_dev_path);
+#		&unmount_and_luks_close($tmp_target_dev_path);
+		&unmount_and_lock($tmp_target_dev_path);
 		warn "TCPH_ERROR Could not set ACLs on $mount_point\nError: $err\n";
 		exit((0xffff&$err) + $_ERR_SETFACL);
 	}
 
 	print "TCPH Unmounting and flushing data to disk\n";
-	&unmount_and_luks_close($tmp_target_dev_path);
+#	&unmount_and_luks_close($tmp_target_dev_path);
+	&unmount_and_lock($tmp_target_dev_path);
 	
 	print "TCPH Copy complete\n";
 }

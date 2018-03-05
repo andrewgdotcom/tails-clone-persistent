@@ -678,7 +678,7 @@ Otherwise, you should delete it and make one with a new passphrase.
 			$self->send("YES\n");
 			exp_continue;
 		}], [
-		"(Enter|Verify) passphrase", sub{
+		"((Enter|Verify) p|P)assphrase", sub{
 			my $self=shift;
 			# allow subprocess to flush input buffer on slow H/W
 			sleep(1);
