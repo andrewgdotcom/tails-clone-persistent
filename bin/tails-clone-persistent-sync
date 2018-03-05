@@ -4,6 +4,8 @@
 # It takes one argument for the location of the source data
 # The destination drive is hardcoded to prevent shenanigans
 
+set -e
+
 TARGET=/media/tails-persistence-setup/TailsData
 
 /usr/bin/rsync -a --delete --exclude=gnupg/random_seed --exclude=lost+found "$1/" "$TARGET"
