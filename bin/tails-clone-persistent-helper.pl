@@ -270,7 +270,6 @@ sub do_copy() {
 	# (re)open the crypted device
 	my $tmp_target_dev_path = &unlock_device($partition);
 	if($tmp_target_dev_path eq "") {
-		&lock_device($tmp_target_dev_path);
 		warn "TCPH_ERROR Could not unlock crypted volume\n";
 		exit($_INTERNAL_MOUNT);
 	}
