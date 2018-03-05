@@ -177,7 +177,7 @@ sub make_partition() {
 	}
 
 	$_DEBUG and warn "Renaming partition label\n";
-	$err = system('sbin/parted', '-s', $block_device, 'name', '2', 'TailsData');
+	$err = system('/sbin/parted', '-s', $block_device, 'name', '2', 'TailsData');
 	if($err) {
 		warn "TCPH_ERROR Could not rename new partition\nError: $err\n";
 		exit((0xffff&$err) + $_ERR_PARTED_NAME);
