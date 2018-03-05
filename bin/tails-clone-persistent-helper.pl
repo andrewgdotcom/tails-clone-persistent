@@ -284,10 +284,19 @@ sub do_copy() {
 	}
 	$_DEBUG and warn "Crypted volume mounted on $mount_point\n";
 
-	# run rsync to copy files. Note that --delete does NOT delete
-	# --exclude'd files on the target.
+	# The above should mount the persistent partition on a predictable
+	# mount point. If it does not, there is something badly wrong.
+	# The sudo tools have the target mount point hard coded to prevent
+	# them being used to overwrite parts of the system.
+
+	if($mount_point ne "/media/tails-persistence-setup/TailsData") {
+		warn "Crypted volume mounted on unexpected mount point $mount_point. Aborting!";
+		exit($_INTERNAL_MOUNT);
+	}
+
+	# call syncer to copy files.
 	print "TCPH Copying files...\n";
-	$err = system('/usr/bin/rsync', '-a', '--delete', '--exclude=gnupg/random_seed', '--exclude=lost+found', "$source_dir/", $mount_point);
+	$err = system('/usr/bin/sudo', '/usr/bin/tails-clone-persistent-sync', "$source_dir");
 	if($err) {
 		&unmount_device($tmp_target_dev_path);
 		&lock_device($partition);
@@ -299,23 +308,31 @@ sub do_copy() {
 	# after rsync mucks them about - otherwise tails will barf. See
 	# https://tails.boum.org/contribute/design/persistence/#security
 
-	$err = chmod(0775, $mount_point); # chmod should return 1!
-	if($err!=1){
-		&unmount_device($tmp_target_dev_path);
-		&lock_device($partition);
-		warn "TCPH_ERROR Could not set permissions on $mount_point\nError: $err\n";
-		exit((0xffff&$err) + $_ERR_CHMOD);
-	}
+#	$err = chmod(0775, $mount_point); # chmod should return 1!
+#	if($err!=1){
+#		&unmount_device($tmp_target_dev_path);
+#		&lock_device($partition);
+#		warn "TCPH_ERROR Could not set permissions on $mount_point\nError: $err\n";
+#		exit((0xffff&$err) + $_ERR_CHMOD);
+#	}
+#
+#	$err = system('/usr/bin/setfacl', '-b', $mount_point);
+#	if($err){
+#		&unmount_device($tmp_target_dev_path);
+#		&lock_device($partition);
+#		warn "TCPH_ERROR Could not clear ACLs on $mount_point\nError: $err\n";
+#		exit((0xffff&$err) + $_ERR_SETFACL);
+#	}
+#
+#	$err = system('/usr/bin/setfacl', '-m', 'user:tails-persistence-setup:rwx', $mount_point);
+#	if($err){
+#		&unmount_device($tmp_target_dev_path);
+#		&lock_device($partition);
+#		warn "TCPH_ERROR Could not set ACLs on $mount_point\nError: $err\n";
+#		exit((0xffff&$err) + $_ERR_SETFACL);
+#	}
 
-	$err = system('/usr/bin/setfacl', '-b', $mount_point);
-	if($err){
-		&unmount_device($tmp_target_dev_path);
-		&lock_device($partition);
-		warn "TCPH_ERROR Could not clear ACLs on $mount_point\nError: $err\n";
-		exit((0xffff&$err) + $_ERR_SETFACL);
-	}
-
-	$err = system('/usr/bin/setfacl', '-m', 'user:tails-persistence-setup:rwx', $mount_point);
+	$err = system('/usr/bin/sudo', '/usr/bin/tails-fix-persistent-volume-permissions');
 	if($err){
 		&unmount_device($tmp_target_dev_path);
 		&lock_device($partition);

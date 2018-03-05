@@ -2,24 +2,19 @@ DPKG_DEST = ~/build
 PREFIX = $(DPKG_DEST)/tails-clone-persistent
 
 BINPREFIX = $(PREFIX)/usr/bin
+SUDOERSD = $(PREFIX)/etc/sudoers.d
 
-all: src/tails-clone-persistent-helper
-
-$(BINPREFIX) :
-	sudo mkdir -p $@
-
-src/tails-clone-persistent-helper: src/tails-clone-persistent-helper.cpp
-	echo "Entering src/"
-	(cd src && make)
-	echo "Exiting src/"
-
-install: all $(BINPREFIX)
-	sudo cp bin/tails-clone-persistent bin/tails-clone-persistent-helper.pl src/tails-clone-persistent-helper $(BINPREFIX)/
-	sudo chmod 755 $(BINPREFIX)/tails-clone-persistent $(BINPREFIX)/tails-clone-persistent-helper.pl
-	sudo chmod 4755 $(BINPREFIX)/tails-clone-persistent-helper
+all:
 
 clean:
-	(cd src && make clean)
+
+$(BINPREFIX) $(SUDOERSD) :
+	sudo mkdir -p $@
+
+install: $(BINPREFIX) $(SUDOERSD)
+	sudo cp bin/tails-clone-persistent bin/tails-clone-persistent-helper.pl $(BINPREFIX)/tails-clone-persistent-helper $(BINPREFIX)/tails-clone-persistent-sync $(BINPREFIX)/
+	sudo cp zzz_tails-clone-persistent $(SUDOERSD)/
+	sudo chmod 755 $(BINPREFIX)/tails-clone-persistent $(BINPREFIX)/tails-clone-persistent-helper.pl $(BINPREFIX)/tails-clone-persistent-helper $(BINPREFIX)/tails-clone-persistent-sync
 
 deb: install
 	vi DEBIAN/control
@@ -28,5 +23,4 @@ deb: install
 	sudo dpkg-deb --build $(PREFIX) $(DPKG_DEST)
 
 deb-clean: clean
-	sudo rm -rf $(BINPREFIX)/tails-clone-persistent*
-
+	sudo rm -rf $(BINPREFIX)/tails-clone-persistent* $(SUDOERSD)/zzz_tails-clone-persistent

@@ -1,0 +1,9 @@
+#!/bin/bash
+
+# rsync wrapper for tails-clone-persistent
+# It takes one argument for the location of the source data
+# The destination drive is hardcoded to prevent shenanigans
+
+TARGET=/media/tails-persistence-setup/TailsData
+
+/usr/bin/rsync -a --delete --exclude=gnupg/random_seed --exclude=lost+found "$1/" "$TARGET"

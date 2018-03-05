@@ -1,0 +1,10 @@
+#!/bin/bash
+
+# Sudo wrapper for tails-clone-persistent-helper.pl
+# This relies on a suitable sudo configuration under /etc/sudoers.d
+
+set -e
+
+RUN_AS_USER=tails-persistence-setup
+
+sudo -u "$RUN_AS_USER" /usr/bin/tails-clone-persistent-helper.pl $@
