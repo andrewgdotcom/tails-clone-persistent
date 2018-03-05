@@ -287,7 +287,7 @@ sub do_copy() {
 	# them being used to overwrite parts of the system.
 
 	if($mount_point ne "/media/tails-persistence-setup/TailsData") {
-		warn "Crypted volume mounted on unexpected mount point $mount_point. Aborting!";
+		warn "TCPH_ERROR Crypted volume mounted on unexpected mount point $mount_point. Aborting!";
 		exit($_INTERNAL_MOUNT);
 	}
 
