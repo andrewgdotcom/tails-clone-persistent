@@ -291,7 +291,9 @@ sub do_copy() {
 		exit($_INTERNAL_MOUNT);
 	}
 
-	# call syncer to copy files.
+	# Call syncer to copy files. This needs to escalate privileges in
+	# order to read system files on the live persistent volume
+
 	print "TCPH Copying files...\n";
 	$err = system('/usr/bin/sudo', '/usr/bin/tails-clone-persistent-sync', "$source_dir");
 	if($err) {
