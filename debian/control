@@ -1,12 +1,15 @@
-Package: tails-clone-persistent
-Version: 0.2.0~~pre20
+Source: tails-clone-persistent
+Maintainer: andrewg@andrewg.com
 Section: main
 Priority: extra
+Standards-Version: 4.0.0
+Build-Depends: debhelper (>= 10)
+
+Package: tails-clone-persistent
 Architecture: all
 Depends: perl, libgtk2-perl, libexpect-perl, udisks2, libbytes-random-secure-perl
 Breaks: frith (<< 0.0.48)
 Replaces: frith (<< 0.0.48)
-Maintainer: andrewg@andrewg.com
 Description: Tails persistent volume cloner
   A simple tool to clone the live Tails persistent volume to another (new or 
   pre-existing) Tails persistent volume.

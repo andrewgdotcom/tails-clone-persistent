@@ -1,5 +1,5 @@
-BINPREFIX = /usr/bin
-ETCPREFIX = /etc
+BINPREFIX = $(DESTDIR)/usr/bin
+ETCPREFIX = $(DESTDIR)/etc
 SUDOERSD = $(ETCPREFIX)/sudoers.d
 POLKITD = $(ETCPREFIX)/polkit-1/localauthority/10-vendor.d
 
