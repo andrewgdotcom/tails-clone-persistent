@@ -9,10 +9,10 @@ all:
 
 clean:
 
-$(BINPREFIX) $(SUDOERSD) :
+$(BINPREFIX) $(SUDOERSD) $(POLKITD) :
 	sudo mkdir -p $@
 
-install: $(BINPREFIX) $(SUDOERSD)
+install: $(BINPREFIX) $(SUDOERSD) $(POLKITD)
 	sudo cp bin/tails-clone-persistent bin/tails-clone-persistent-helper.pl bin/tails-clone-persistent-helper bin/tails-clone-persistent-sync $(BINPREFIX)/
 	sudo cp zzz_tails-clone-persistent $(SUDOERSD)/
 	sudo cp zzz_com.andrewg.tails-clone-persistent.pkla $(POLKITD)/
