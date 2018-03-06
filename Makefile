@@ -13,7 +13,7 @@ $(BINPREFIX) $(SUDOERSD) :
 	sudo mkdir -p $@
 
 install: $(BINPREFIX) $(SUDOERSD)
-	sudo cp bin/tails-clone-persistent bin/tails-clone-persistent-helper.pl $(BINPREFIX)/tails-clone-persistent-helper $(BINPREFIX)/tails-clone-persistent-sync $(BINPREFIX)/
+	sudo cp bin/tails-clone-persistent bin/tails-clone-persistent-helper.pl bin/tails-clone-persistent-helper bin/tails-clone-persistent-sync $(BINPREFIX)/
 	sudo cp zzz_tails-clone-persistent $(SUDOERSD)/
 	sudo cp zzz_com.andrewg.tails-clone-persistent.pkla $(POLKITD)/
 	sudo chmod 755 $(BINPREFIX)/tails-clone-persistent $(BINPREFIX)/tails-clone-persistent-helper.pl $(BINPREFIX)/tails-clone-persistent-helper $(BINPREFIX)/tails-clone-persistent-sync
@@ -26,4 +26,4 @@ deb: install
 	sudo dpkg-deb --build $(PREFIX) $(DPKG_DEST)
 
 deb-clean: clean
-	sudo rm -rf $(BINPREFIX)/tails-clone-persistent* $(SUDOERSD)/zzz_tails-clone-persistent
+	sudo rm -rf $(BINPREFIX)/tails-clone-persistent* $(SUDOERSD)/zzz_tails-clone-persistent $(POLKITD)/zzz_com.andrewg.tails-clone-persistent.pkla
