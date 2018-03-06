@@ -10,20 +10,20 @@ all:
 clean:
 
 $(BINPREFIX) $(SUDOERSD) $(POLKITD) :
-	sudo mkdir -p $@
+	mkdir -p $@
 
 install: $(BINPREFIX) $(SUDOERSD) $(POLKITD)
-	sudo cp bin/tails-clone-persistent bin/tails-clone-persistent-helper.pl bin/tails-clone-persistent-helper bin/tails-clone-persistent-sync $(BINPREFIX)/
-	sudo cp zzz_tails-clone-persistent $(SUDOERSD)/
-	sudo cp zzz_com.andrewg.tails-clone-persistent.pkla $(POLKITD)/
-	sudo chmod 755 $(BINPREFIX)/tails-clone-persistent $(BINPREFIX)/tails-clone-persistent-helper.pl $(BINPREFIX)/tails-clone-persistent-helper $(BINPREFIX)/tails-clone-persistent-sync
-	sudo chmod 440 $(SUDOERSD)/zzz_tails-clone-persistent
+	cp bin/tails-clone-persistent bin/tails-clone-persistent-helper.pl bin/tails-clone-persistent-helper bin/tails-clone-persistent-sync $(BINPREFIX)/
+	cp zzz_tails-clone-persistent $(SUDOERSD)/
+	cp zzz_com.andrewg.tails-clone-persistent.pkla $(POLKITD)/
+	chmod 755 $(BINPREFIX)/tails-clone-persistent $(BINPREFIX)/tails-clone-persistent-helper.pl $(BINPREFIX)/tails-clone-persistent-helper $(BINPREFIX)/tails-clone-persistent-sync
+	chmod 440 $(SUDOERSD)/zzz_tails-clone-persistent
 
 deb: install
 	vi DEBIAN/control
-	sudo rm -rf $(PREFIX)/DEBIAN
-	sudo cp -R DEBIAN $(PREFIX)/
-	sudo dpkg-deb --build $(PREFIX) $(DPKG_DEST)
+	rm -rf $(PREFIX)/DEBIAN
+	cp -R DEBIAN $(PREFIX)/
+	dpkg-deb --build $(PREFIX) $(DPKG_DEST)
 
 deb-clean: clean
-	sudo rm -rf $(BINPREFIX)/tails-clone-persistent* $(SUDOERSD)/zzz_tails-clone-persistent $(POLKITD)/zzz_com.andrewg.tails-clone-persistent.pkla
+	rm -rf $(BINPREFIX)/tails-clone-persistent* $(SUDOERSD)/zzz_tails-clone-persistent $(POLKITD)/zzz_com.andrewg.tails-clone-persistent.pkla
