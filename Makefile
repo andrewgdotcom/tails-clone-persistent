@@ -1,6 +1,4 @@
-DPKG_DEST = ~/build
-PREFIX = $(DPKG_DEST)/tails-clone-persistent
-
+PREFIX = /home/andrewg/build/tails-clone-persistent
 BINPREFIX = $(PREFIX)/usr/bin
 SUDOERSD = $(PREFIX)/etc/sudoers.d
 POLKITD = $(PREFIX)/etc/polkit-1/localauthority/10-vendor.d
@@ -23,7 +21,7 @@ deb: install
 	vi DEBIAN/control
 	rm -rf $(PREFIX)/DEBIAN
 	cp -R DEBIAN $(PREFIX)/
-	dpkg-deb --build $(PREFIX) $(DPKG_DEST)
+	dpkg-deb --build $(PREFIX) $(PREFIX)/..
 
 deb-clean: clean
 	rm -rf $(BINPREFIX)/tails-clone-persistent* $(SUDOERSD)/zzz_tails-clone-persistent $(POLKITD)/zzz_com.andrewg.tails-clone-persistent.pkla
