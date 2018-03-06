@@ -3,6 +3,7 @@ PREFIX = $(DPKG_DEST)/tails-clone-persistent
 
 BINPREFIX = $(PREFIX)/usr/bin
 SUDOERSD = $(PREFIX)/etc/sudoers.d
+POLKITD = $(PREFIX)/etc/polkit-1/localauthority/10-vendor.d
 
 all:
 
@@ -14,6 +15,7 @@ $(BINPREFIX) $(SUDOERSD) :
 install: $(BINPREFIX) $(SUDOERSD)
 	sudo cp bin/tails-clone-persistent bin/tails-clone-persistent-helper.pl $(BINPREFIX)/tails-clone-persistent-helper $(BINPREFIX)/tails-clone-persistent-sync $(BINPREFIX)/
 	sudo cp zzz_tails-clone-persistent $(SUDOERSD)/
+	sudo cp zzz_com.andrewg.tails-clone-persistent.pkla $(POLKITD)/
 	sudo chmod 755 $(BINPREFIX)/tails-clone-persistent $(BINPREFIX)/tails-clone-persistent-helper.pl $(BINPREFIX)/tails-clone-persistent-helper $(BINPREFIX)/tails-clone-persistent-sync
 	sudo chmod 440 $(SUDOERSD)/zzz_tails-clone-persistent
 

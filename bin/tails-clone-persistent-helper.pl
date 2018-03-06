@@ -176,6 +176,16 @@ sub make_partition() {
 
 	print "TCPH Configuring partitions\n";
 
+	# This entire subroutine SHOULD be implementable by calling
+	# tails-persistence-setup, as it has options for arbitrary targets.
+	# But these are unsupported and throw errors (as of 2018-03-06)
+	# so we wrote our own for the time being.
+	#
+	# NB: this requires a fairly loose sudo config for the persistence
+	# setup user, but we are safely behind a second layer of sudo.
+	#
+	# TODO: use tails-persistence-setup instead
+
 	# information flag
 	my ($start, $persistent_partition_exists) = &tails_free_start($block_device);
 	if($start eq "") {
