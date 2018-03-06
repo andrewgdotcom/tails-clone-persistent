@@ -244,7 +244,7 @@ sub make_partition() {
 	# This will need a new mode - may not be worth the hassle
 
 	print "TCPH Creating filesystem\n";
-	$err = system('/usr/bin/sudo', s'/sbin/mke2fs', '-j', '-t', 'ext4', '-L', 'TailsData', $tmp_target_dev_path);
+	$err = system('/usr/bin/sudo', '/sbin/mke2fs', '-j', '-t', 'ext4', '-L', 'TailsData', $tmp_target_dev_path);
 	if($err) {
 		&lock_device($tmp_target_dev_path);
 		warn "TCPH_ERROR Could not create filesystem on new crypted volume\nError: $err\n";
