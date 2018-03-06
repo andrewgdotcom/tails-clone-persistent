@@ -218,7 +218,6 @@ sub make_partition() {
 	$_DEBUG and warn "Unlocking new crypted volume\n";
 	my $tmp_target_dev_path = &unlock_device($partition);
 	if($tmp_target_dev_path eq "") {
-		&lock_device($tmp_target_dev_path);
 		warn "TCPH_ERROR Could not unlock crypted volume\n";
 		exit($_INTERNAL_MOUNT);
 	}
@@ -233,8 +232,8 @@ sub make_partition() {
 		$err = system('/usr/bin/sudo', '/bin/dd', 'if=/dev/zero', "of=$tmp_target_dev_path", 'bs=128M');
 		if($err != 256) { 
 			# yes, we WANT to fail with "no space left on device"!
-			&lock_device($tmp_target_dev_path);
 			warn "TCPH_ERROR Could not randomise free space on new crypted volume\nError: $err\n";
+			&lock_device($tmp_target_dev_path);
 			exit((0xffff&$err) + $_ERR_DD);		
 		}
 	}
@@ -246,8 +245,8 @@ sub make_partition() {
 	print "TCPH Creating filesystem\n";
 	$err = system('/usr/bin/sudo', '/sbin/mke2fs', '-j', '-t', 'ext4', '-L', 'TailsData', $tmp_target_dev_path);
 	if($err) {
-		&lock_device($tmp_target_dev_path);
 		warn "TCPH_ERROR Could not create filesystem on new crypted volume\nError: $err\n";
+		&lock_device($tmp_target_dev_path);
 		exit((0xffff&$err) + $_ERR_MKE2FS);
 	}
 
@@ -276,8 +275,8 @@ sub do_copy() {
 
 	my $mount_point = &mount_device($tmp_target_dev_path);
 	if($mount_point eq "") {
-		&lock_device($tmp_target_dev_path);
 		warn "TCPH_ERROR Could not mount crypted volume\n";
+		&lock_device($tmp_target_dev_path);
 		exit($_INTERNAL_MOUNT);
 	}
 	$_DEBUG and warn "Crypted volume mounted on $mount_point\n";
@@ -289,6 +288,8 @@ sub do_copy() {
 
 	if($mount_point ne "/media/tails-persistence-setup/TailsData") {
 		warn "TCPH_ERROR Crypted volume mounted on unexpected mount point $mount_point. Aborting!";
+		&unmount_device($tmp_target_dev_path);
+		&lock_device($partition);
 		exit($_INTERNAL_MOUNT);
 	}
 
@@ -298,9 +299,9 @@ sub do_copy() {
 	print "TCPH Copying files...\n";
 	$err = system('/usr/bin/sudo', '/usr/bin/tails-clone-persistent-sync', "$source_dir");
 	if($err) {
+		warn "TCPH_ERROR Error syncing files\nError: $err\n";
 		&unmount_device($tmp_target_dev_path);
 		&lock_device($partition);
-		warn "TCPH_ERROR Error syncing files\nError: $err\n";
 		exit((0xffff&$err) + $_ERR_RSYNC);
 	}
 
@@ -310,9 +311,9 @@ sub do_copy() {
 
 	$err = system('/usr/bin/sudo', '/usr/bin/tails-fix-persistent-volume-permissions');
 	if($err){
+		warn "TCPH_ERROR Could not set ACLs on $mount_point\nError: $err\n";
 		&unmount_device($tmp_target_dev_path);
 		&lock_device($partition);
-		warn "TCPH_ERROR Could not set ACLs on $mount_point\nError: $err\n";
 		exit((0xffff&$err) + $_ERR_SETFACL);
 	}
 
