@@ -1,0 +1,5 @@
+#!/bin/bash
+
+# Need to kill polkit in order for it to refresh its configuration
+
+killall -HUP polkitd
