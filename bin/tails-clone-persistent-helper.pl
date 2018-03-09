@@ -347,13 +347,13 @@ sub tails_clone_persistent_helper() {
 
 	$_DEBUG and warn "Args: ${source_dir} ${block_device} ${mode}\n";
 	# sanitize our input
-	if($source_dir =~ m!^([A-Za-z0-9.,=+_/-]*)$!) {
+	if($source_dir =~ m!^([A-Za-z0-9.,+_/-]*)$!) {
 		$source_dir=$1;
 	} else {
 		print "Unsafe characters detected in SOURCE_DIR. Aborting\n";
 		exit($_INTERNAL_SANITATION);
 	}
-	if($block_device =~ m!^([A-Za-z0-9.,=+_/-]*)$!) {
+	if($block_device =~ m!^([A-Za-z0-9.,+_/-]*)$!) {
 		$block_device=$1;
 	} else {
 		print "Unsafe characters detected in BLOCK_DEVICE. Aborting\n";

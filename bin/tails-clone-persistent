@@ -479,7 +479,7 @@ sub clone_to_tails() {
 	
 	# sanitise input - forbid globs, escapes, special quotes
 	&make_failure("Unsafe characters in source path. Aborting.") unless 
-		$CMD_OPTIONS{'source'} =~ m!^([^*\\'`"]*)$!;
+		$CMD_OPTIONS{'source'} =~ m!^([A-Za-z0-9.,+_/-]*)$!;
 	my $source_location = $1;
 	
 	my $tails_partition = &get_tails_partition();
