@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Clone persistent volume
+Name[fr]=Cloner le stockage persistent
+Comment=Clone saved files and application configuration to another Tails drive
+Comment[fr]=Cloner les données et configuration conservées des applications à un autre disque de Tails
+Icon=tails-persistence-setup.svg
+Exec=tails-clone-persistent
+Terminal=false
+Categories=System;Tails;
+StartupNotify=false;
