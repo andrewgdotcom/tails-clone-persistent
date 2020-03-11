@@ -426,7 +426,7 @@ sub choose_block_device {
 	open($pipe, '-|', '/sbin/blkid');
 	while(<$pipe>) {
 		print $_ if $CMD_OPTIONS{'debug'};
-		if(m!^([/[:alnum:]._-]+): LABEL="Tails" UUID="[a-fA-F0-9-]+" TYPE="vfat"!) {
+		if(m!^([/[:alnum:]._-]+): (.+ )?LABEL="Tails" (.+ )?UUID="[a-fA-F0-9-]+" (.+ )?TYPE="vfat"!) {
 			my $device = $1;
 			if($device ne $except) {
 				chop $device;
