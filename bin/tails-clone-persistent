@@ -6,9 +6,9 @@ my $version = '0.2';
 #
 # tails-clone-persistent
 #
-# We call &tails_clone_persistent_helper to do our dirty work. It 
+# We call &tails_clone_persistent_helper to do our dirty work. It
 # has no user interaction or intelligence. That's all in here.
-# This is because we use an expect() wrapper to safely provide 
+# This is because we use an expect() wrapper to safely provide
 # passphrases to the luks routines.
 #
 #######################################################################
@@ -27,7 +27,7 @@ use Bytes::Random::Secure qw(random_bytes_base64);
 $ENV{'PATH'} = '/bin:/usr/bin:/sbin:/usr/sbin';
 
 my $expect_timeout = 3600; # Data flushing can be slooow
-my $tails_installer = '/usr/lib/tails_installer/tails-installer';
+my $tails_installer = '/usr/bin/tails-installer';
 
 my $helper_utility = '/usr/bin/tails-clone-persistent-helper';
 
@@ -62,7 +62,7 @@ sub parse_options {
 		$CMD_OPTIONS{$option} = $value;
 	}
   }
-} 
+}
 
 sub option_help {
 	print qq[This is ${program} v${version}
@@ -93,14 +93,14 @@ It takes the following options:
 
 
 # Need global access to window, hboxes, buttons to toggle visibility
-my ($graphic_window, 
-	$working_hbox, 
-	$pass_hbox, 
-	$pass_confirm_hbox, 
-	$chooser_hbox, 
-	$reuse_hbox, 
-	$button_hbox, 
-	$quit_button, 
+my ($graphic_window,
+	$working_hbox,
+	$pass_hbox,
+	$pass_confirm_hbox,
+	$chooser_hbox,
+	$reuse_hbox,
+	$button_hbox,
+	$quit_button,
 	$continue_button);
 
 # Need global access to particular widgets to read and write contents
@@ -128,13 +128,13 @@ sub graphic_window_init() {
 	# Passphrase entry
 
 	$pass_hbox = Gtk2::HBox->new;
-	
+
 	my $pass_label = Gtk2::Label->new('Passphrase:');
 
 	$pass_entry = Gtk2::Entry->new;
 	$pass_entry->set_visibility(0);
 	$pass_entry->set_invisible_char('*');
-	
+
 	$pass_hbox->pack_start($pass_label, 0,0,5);
 	$pass_hbox->pack_start($pass_entry, 1,1,5);
 	$vbox->pack_start($pass_hbox, 0,0,0);
@@ -154,7 +154,7 @@ sub graphic_window_init() {
 	$vbox->pack_start($pass_confirm_hbox, 0,0,5);
 
 	# Chooser
-	# We create this empty now, and add entries to it later 
+	# We create this empty now, and add entries to it later
 	# Note the perl GTK2 interface doesn't implement ComboBoxText yet.
 
 	$chooser_hbox = Gtk2::HBox->new;
@@ -180,7 +180,7 @@ sub graphic_window_init() {
 	# Quit and Continue buttons. We'll reuse these as much as we can.
 
 	$button_hbox = Gtk2::HBox->new;
-	
+
 	$quit_button = Gtk2::Button->new_with_mnemonic('_Quit');
 	$quit_button->signal_connect('clicked'=> sub{$event_outcome=0; Gtk2->main_quit});
 
@@ -193,7 +193,7 @@ sub graphic_window_init() {
 
 	# add vbox to window and show everything in the vbox by default
 	# we'll hide specific hboxes elsewhere
-	
+
 	$graphic_window->add($vbox);
 	$vbox->show_all;
 
@@ -205,18 +205,18 @@ sub secure_input() {
 	my $input='';
 	$working_label->set_text($prompt);
 	$pass_entry->set_text('');
-	
+
 	$working_hbox->show;
 	$pass_hbox->show;
 	$pass_confirm_hbox->hide;
 	$chooser_hbox->hide;
 	$reuse_hbox->hide;
 	$button_hbox->show_all;
-	
+
 	$event_outcome=0;
 	$graphic_window->show;
 	Gtk2->main;
-	
+
 	if($event_outcome){
 		$input=$pass_entry->get_text();
 		$input =~ s/[\n\r\f\t]//g;
@@ -231,15 +231,15 @@ sub ask_passphrase() {
 	$working_label->set_text(
 	q[A passphrase will be used to encrypt your new persistent partition.
 
-The passphrase should contain at least 16 characters, and at least one 
+The passphrase should contain at least 16 characters, and at least one
 non-alphanumeric character, such as punctuation.
 ]);
 	my ($passphrase, $confirm, $success);
-	
+
 	do {
 		$pass_entry->set_text('');
 		$pass_confirm_entry->set_text('');
-		
+
 		$working_hbox->show;
 		$pass_hbox->show;
 		$pass_confirm_hbox->show;
@@ -249,9 +249,9 @@ non-alphanumeric character, such as punctuation.
 
 		$graphic_window->show;
 		Gtk2->main;
-		
+
 		return '' unless $event_outcome;
-		
+
 		$passphrase = $pass_entry->get_text();
 		$confirm = $pass_confirm_entry->get_text();
 		$passphrase =~ s/[\n\r\f\t]//g;
@@ -261,22 +261,22 @@ non-alphanumeric character, such as punctuation.
 			$passphrase !~ /[^[:alnum:]]/) {
 			$working_label->set_text(
 			q[PASSPHRASE IS NOT STRONG ENOUGH - PLEASE TRY AGAIN
-			
-The passphrase should contain at least 16 characters, and at least one 
+
+The passphrase should contain at least 16 characters, and at least one
 non-alphanumeric character, such as punctuation.
 ]) ;
 		} elsif($passphrase ne $confirm) {
 			$working_label->set_text(
 			q[CONFIRMATION DOES NOT MATCH - PLEASE TRY AGAIN
 
-The passphrase should contain at least 16 characters, and at least one 
+The passphrase should contain at least 16 characters, and at least one
 non-alphanumeric character, such as punctuation.
 ]);
 		} else {
 			$success=1;
 		}
 	} until($success);
-	
+
 	$pass_entry->set_text('');
 	$pass_confirm_entry->set_text('');
 	return $passphrase;
@@ -286,47 +286,47 @@ non-alphanumeric character, such as punctuation.
 sub make_submenu() {
 	my $prompt = shift;
 	$working_label->set_text($prompt);
-	
+
 	foreach my $i (@_) {
 		$chooser->append_text($i);
 	}
 	$chooser->set_active(0);
-	
+
 	$working_hbox->show;
 	$pass_hbox->hide;
 	$pass_confirm_hbox->hide;
 	$chooser_hbox->show;
 	$reuse_hbox->hide;
 	$button_hbox->show_all;
-	
+
 	$event_outcome=0;
 	$graphic_window->show;
 	Gtk2->main;
-	
+
 	return '' unless $event_outcome;
-	
+
 	my $index=$chooser->get_active;
-	
+
 	return $_[$index];
-	
+
 }
 
 sub make_confirm() {
 	my $prompt = shift;
 	my $input='';
 	$working_label->set_text($prompt);
-	
+
 	$working_hbox->show;
 	$pass_hbox->hide;
 	$pass_confirm_hbox->hide;
 	$chooser_hbox->hide;
 	$reuse_hbox->hide;
 	$button_hbox->show_all;
-	
+
 	$event_outcome=0;
 	$graphic_window->show;
 	Gtk2->main;
-	
+
 	return $event_outcome;
 }
 
@@ -334,18 +334,18 @@ sub make_reuse() {
 	my $prompt = shift;
 	my $input='';
 	$working_label->set_text($prompt);
-	
+
 	$working_hbox->show;
 	$pass_hbox->hide;
 	$pass_confirm_hbox->hide;
 	$chooser_hbox->hide;
 	$reuse_hbox->show_all;
 	$button_hbox->hide;
-	
+
 	$event_outcome=0;
 	$graphic_window->show;
 	Gtk2->main;
-	
+
 	return $event_outcome;
 }
 
@@ -353,7 +353,7 @@ sub make_success() {
 	my $prompt = shift;
 	my $input='';
 	$working_label->set_text($prompt);
-	
+
 	$working_hbox->show;
 	$pass_hbox->hide;
 	$pass_confirm_hbox->hide;
@@ -361,11 +361,11 @@ sub make_success() {
 	$reuse_hbox->hide;
 	$button_hbox->show_all;
 	$continue_button->hide;
-	
+
 	$event_outcome=0;
 	$graphic_window->show;
 	Gtk2->main;
-	
+
 	return $event_outcome;
 }
 
@@ -379,16 +379,16 @@ sub make_progress() {
 	my $prompt = shift;
 	my $input='';
 	$working_label->set_text($prompt);
-	
+
 	$working_hbox->show;
 	$pass_hbox->hide;
 	$pass_confirm_hbox->hide;
 	$chooser_hbox->hide;
 	$reuse_hbox->hide;
 	$button_hbox->hide;
-	
+
 	$graphic_window->show;
-	
+
 	# run just enough GTK iterations to process the redraw event queue
 	Gtk2->main_iteration while Gtk2->events_pending;
 
@@ -403,8 +403,8 @@ sub make_progress() {
 sub get_tails_partition {
 	my $tails_partition;
 	my $pipe;
-	
-	open($pipe, '-|', '/bin/mount') 
+
+	open($pipe, '-|', '/bin/mount')
 		or &make_failure("Failed to read mount points. Aborting.");
 	while(<$pipe>) {
 		print $_ if $CMD_OPTIONS{'debug'};
@@ -435,7 +435,7 @@ sub choose_block_device {
 		}
 	}
 	close $pipe;
-	
+
 	if(@block_devices) {
 		# Hooray, we found some likely targets. Let the user choose one.
 		# (NB the user can click cancel if she doesn't like any of them
@@ -452,7 +452,7 @@ sub mount_device {
 	my $block_device = shift;
 	my $mount_point;
 	my $pipe;
-	
+
 	print qq[Mounting crypted partition...\n] if $CMD_OPTIONS{'debug'};
 	open($pipe, '-|', '/usr/bin/udisksctl', 'mount', '--block-device', ${block_device})
 		or &make_failure("Could not mount disk ${block_device}. Aborting.");
@@ -471,28 +471,28 @@ sub mount_device {
 ##################################
 
 
-sub clone_to_tails() {	
-	
+sub clone_to_tails() {
+
 	###############
 	# Preparation #
 	###############
-	
+
 	# sanitise input - forbid globs, escapes, special quotes
-	&make_failure("Unsafe characters in source path. Aborting.") unless 
+	&make_failure("Unsafe characters in source path. Aborting.") unless
 		$CMD_OPTIONS{'source'} =~ m!^([A-Za-z0-9.,+_/-]*)$!;
 	my $source_location = $1;
-	
+
 	my $tails_partition = &get_tails_partition();
-	&make_failure("Could not determine running Tails partition. Aborting.") 
+	&make_failure("Could not determine running Tails partition. Aborting.")
 		unless $tails_partition;
 	print "Tails volume found on $tails_partition\n" if $CMD_OPTIONS{'debug'};
 
 	# Okay, kid. This is where it gets complicated.
 
 	my $block_device = $CMD_OPTIONS{'target'};
-		 
+
 	if($block_device) {
-		&make_failure("${block_device} is not a valid block device") 
+		&make_failure("${block_device} is not a valid block device")
 			unless -b $block_device;
 	} else {
 		# No target device supplied on the command line; ask user.
@@ -501,15 +501,15 @@ sub clone_to_tails() {
 		# We'll deal with that in a bit.
 		$block_device = &choose_block_device('SELECT TAILS DISK TO COPY TO', $tails_partition);
 	}
-	
+
 	if($CMD_OPTIONS{'install'}) {
 		# install forced by command line. Continue without prompting.
-		
+
 		if($block_device) {
 			# we are overwriting an existing tails drive
 			# force use of the block device we already selected so we
 			# don't prompt the user twice
-			system($tails_installer, '-u', '-n', '--clone', '-P', '-m', '-x', 
+			system($tails_installer, '-u', '-n', '--clone', '-P', '-m', '-x',
 				'-f', $block_device);
 		} else {
 			# need to create a new tails drive
@@ -517,36 +517,36 @@ sub clone_to_tails() {
 			# TODO: handle the dialog for choosing the non-tails
 			# target ourselves and feed it to tails-installer instead of
 			# prompting user twice
-			
+
 			system($tails_installer, '-u', '-n', '--clone', '-P', '-m', '-x');
 			$block_device = &choose_block_device('SELECT TAILS DISK TO COPY TO', $tails_partition);
 			&make_failure("No target disk") unless $block_device;
 		}
 
 	} elsif(!$block_device) {
-		
+
 		# the user didn't (couldn't?) choose a tails target
 		# and install not forced, so we must ask permission to proceed
-		
+
 		&make_failure("No target disk") unless &make_confirm(
 q[No tails drive selected. Insert a new USB drive (minimum 4GB)]);
 
 		# TODO: handle the dialog for choosing the non-tails
 		# target ourselves and feed it to tails-installer instead of
 		# prompting user twice
-		
+
 		system($tails_installer, '-u', '-n', '--clone', '-P', '-m', '-x');
 		$block_device = &choose_block_device('SELECT TAILS DISK TO COPY TO', $tails_partition);
 		&make_failure("No target disk") unless $block_device;
 
-	} 
-	
+	}
+
 	# phew.
 
 	my $passphrase;
 	my $partition_mode='new';
 	if($CMD_OPTIONS{'deniable'}) {
-		
+
 		$partition_mode='deniable';
 
 	} elsif($CMD_OPTIONS{'decoy'}) {
@@ -565,22 +565,22 @@ q[No tails drive selected. Insert a new USB drive (minimum 4GB)]);
 		#
 		# We could just slurp those 32 bytes straight out of /dev/random
 		# but running them through a CSPRNG first is never a bad idea.
-		# 
+		#
 		# NBNB this is utter, utter overkill. Nobody's real passphrase
 		# is going to be anywhere near as "random" as this one, so if an
 		# adversary were able to detect a real partition filled mostly
 		# of crypted zeros in a sea of our "perfectly random" decoys,
 		# it is most likely NOT going to be by fingerprinting our PRNG.
-		
+
 		$passphrase = random_bytes_base64(57);
 		print "Generated randomness:\n", $passphrase, "\n" if $CMD_OPTIONS{'debug'};
-		
+
 		# We generate the decoy filesystem through the same method as
 		# we make a deniable one, in order to minimise the chances that
 		# errors in our logic could be used to fingerprint our actions.
 
 		$partition_mode='deniable';
-		
+
 		# BUT... don't copy any data, because that a) wastes time and
 		# b) wears out our target drive for no good reason.
 		#
@@ -588,7 +588,7 @@ q[No tails drive selected. Insert a new USB drive (minimum 4GB)]);
 		# data over the zeroed decoy partition would be if an adversary
 		# could determine the write times of the blocks on the target
 		# medium. And if that were true, we'd have much worse problems.
-		
+
 		$source_location = "";
 
 	} else {
@@ -598,7 +598,7 @@ q[No tails drive selected. Insert a new USB drive (minimum 4GB)]);
 			return unless &make_confirm("Update the existing persistent data on ${block_device}?");
 
 			my $reuse = &make_reuse(
-q[If you know the passphrase of the target partition, you can reuse it. 
+q[If you know the passphrase of the target partition, you can reuse it.
 This is faster, and could (slightly) extend the life of your disk.
 
 Otherwise, you should delete it and make one with a new passphrase.
@@ -608,22 +608,22 @@ Otherwise, you should delete it and make one with a new passphrase.
 				$partition_mode='existing';
 				$passphrase = &secure_input('Please unlock the target disk');
 			}
-		} 
+		}
 	}
-	
+
 	# if no passphrase given (incl. if there was no existing partition)
 	unless($passphrase) {
 		$passphrase = &ask_passphrase;
 		return unless $passphrase;
 	}
-	
+
 	###############
 	# Ready to go #
 	###############
 
 	# Now call expect to handle the setuid helper
 	&make_progress('Preparing copy...');
-	
+
 	$ENV{'TCP_HELPER_DEBUG'}='1' if $CMD_OPTIONS{'debug'};
 	# the "factory" is just a standard expect object
 	my $exp_factory = new Expect;
@@ -634,13 +634,13 @@ Otherwise, you should delete it and make one with a new passphrase.
 	} else {
 		$exp_factory->log_stdout(0);
 	};
-	
+
 	# fork a new expect from the factory
 	my $exp = $exp_factory->spawn($helper_utility, $source_location, $block_device, $partition_mode);
 	&make_failure("Could not run ${helper_utility}. Aborting.") unless $exp;
 
-	$exp->expect($expect_timeout, 
-	
+	$exp->expect($expect_timeout,
+
 		# Fatal errors
 		[
 		"Cannot exec", sub{
@@ -654,8 +654,8 @@ Otherwise, you should delete it and make one with a new passphrase.
 			my $prompt = $self->exp_match();
 			$prompt =~ s/^TCPH_ERROR //;
 			&make_failure($prompt);
-		}],	
-				
+		}],
+
 		# Progress indicators
 		[
 		'TCPH .*$', sub{
@@ -664,15 +664,15 @@ Otherwise, you should delete it and make one with a new passphrase.
 			$prompt =~ s/^TCPH //;
 			&make_progress($prompt);
 			exp_continue;
-		}],	
-				
+		}],
+
 		# Request and response
 		[
 		"Type uppercase yes", sub{
 			my $self=shift;
 			# I suspect a race condition here, as this often fails with
 			# a permissions error within expect, but never fails when
-			# run by hand. Sleep for a while to let data flushing 
+			# run by hand. Sleep for a while to let data flushing
 			# happen in the background.
 			sleep(1);
 			$self->send("YES\n");
@@ -693,7 +693,7 @@ Otherwise, you should delete it and make one with a new passphrase.
 			exp_continue;
 		}]
 	);
-	
+
 	&make_success('Copy complete');
 }
 
@@ -704,7 +704,7 @@ Otherwise, you should delete it and make one with a new passphrase.
 sub main {
 	&parse_options;
 	&graphic_window_init;
-		
+
 	if($CMD_OPTIONS{'help'}) {
 		&option_help;
 	} else {
