@@ -1,6 +1,8 @@
 Tails-Clone-Persistent
 ======================
 
+*This tool is obsolete since Tails v4.14, which ships the `tails-backup` tool by default.*
+
 A simple tool to clone a live Tails persistent volume to another (new or
 pre-existing) persistent volume. 
 
